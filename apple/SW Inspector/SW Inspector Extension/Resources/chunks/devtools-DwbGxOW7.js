@@ -1,0 +1,1 @@
+import{n as e,r as t}from"./devtools-relay-B_8DkBRT.js";var n=crypto.randomUUID(),r=e(t.runtime,t.devtools,n);addEventListener(`pagehide`,r,{once:!0}),t.devtools.panels.create(`SW Inspector`,`/icons/toolbar.svg`,`panel.html?session=${encodeURIComponent(n)}`);

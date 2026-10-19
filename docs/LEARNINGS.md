@@ -26,6 +26,7 @@ These are evidence-backed prevention rules from the 2026-10-19 implementation an
 - **Read-only needs precise limits.** `keys()` followed by `open()` is not atomic; do not promise that external deletion can never lead to empty-cache recreation. Body bytes, origin estimates, opaque values, and offline-key checks have distinct semantics ([ADR 0001](adr/0001-read-only-diagnostics.md)).
 - **Developer-tool design is durable.** The user selected Safari Storage/Network. Large cards and a dominant status banner competed with inspection work. New features inherit the density, pane boundaries, and selection rules in [DESIGN.md](../DESIGN.md).
 - **Toolbar and application icons have different jobs.** Safari displayed the opaque application icon as a gray square around a tiny glyph when `action.default_icon` was absent. Provide a separate transparent monochrome toolbar asset and explicit action icons; keep the application identity separate, and verify the installed Safari rendering instead of inferring it from the source PNG.
+- **SVG is not proof of sharpness.** Compare the native button at its real display size. Filled contours aligned to the icon grid avoid partial-pixel straight edges at 16/32px; preserve rounded corners rather than disabling antialiasing globally. Reload the extension before comparing: rebuilding its Xcode bundle does not prove that Safari refreshed a cached toolbar image.
 
 ## Keeping the record useful
 

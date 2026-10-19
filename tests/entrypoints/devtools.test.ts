@@ -44,7 +44,7 @@ describe('Safari DevTools entrypoint', () => {
     await import('../../entrypoints/devtools/main');
 
     expect(order).toEqual(['listener', 'panel']);
-    expect(extension.createPanel).toHaveBeenCalledWith('SW Inspector', '/icons/16.png', 'panel.html?session=session-one');
+    expect(extension.createPanel).toHaveBeenCalledWith('SW Inspector', '/icons/toolbar.svg', 'panel.html?session=session-one');
     expect(extension.nativeEval).not.toHaveBeenCalled();
 
     const respond = vi.fn();

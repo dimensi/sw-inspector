@@ -218,9 +218,13 @@ Controls and fields have restrained control-radius corners. Navigation and table
 
 ### Application and extension icon
 
+The Web Inspector tab uses the transparent `public/icons/toolbar.svg` glyph through the `iconPath` argument of `devtools.panels.create`. Keep this separate from `manifest.icons`: the opaque application tile does not belong beside native Inspector tabs.
+
 The identity asset is [logo.png](logo.png): a flat graphite inspector window with a sidebar divider and one blue selected row on an opaque neutral canvas. Preserve its simple silhouette and small-size legibility; avoid layered objects, gears, glass, gradients, and decorative lighting. This raster identity asset is separate from the panel's SVG control icons.
 
 Safari's toolbar has a separate source, [public/icons/toolbar.svg](public/icons/toolbar.svg): the same inspector-window silhouette reduced to a black outline and two rows on a transparent canvas. Keep it monochrome, without the app icon's opaque tile or blue accent. Safari's `action.default_icon` points directly to this SVG; the Chrome build selects dedicated 16/19px PNGs and their 32/38px Retina counterparts. `action.default_title` names the button, with no popup. The extension identity still uses the opaque `manifest.icons` renditions. Direct SVG rendering was checked in the installed Safari 27.0 light toolbar; do not infer support in every browser/version from that result.
+
+The toolbar glyph uses filled contours with one-unit thickness and straight edges on integer coordinates in a 16-unit view box. Its intrinsic size is 32px. Preserve these edges when refining it: the former 1.25-unit centered strokes spread straight lines across partial pixels at 16/32px. SVG alone does not guarantee native sharpness at every size; compare the installed Safari button with neighboring controls.
 
 Generate both sets with `pnpm sync:logo`, then update extension bundles with `pnpm sync:safari`. The script uses macOS `sips` for the identity logo's extension icons, macOS AppIcon sizes, and wrapper welcome-window icon; ImageMagick renders the toolbar SVG directly to transparent PNGs. Check actual 16/32px toolbar renditions and native Safari appearance in both themes after replacements. Identity checks still include 16/32/128px sizes. The [asset provenance](.impeccable/assets/logo.json) records the identity asset's generation prompt and selected source.
 

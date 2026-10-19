@@ -40,7 +40,6 @@ describe('Apple Safari extension icons', () => {
     expect(Object.values(manifest.icons)).not.toContain(manifest.action?.default_icon);
     const svg = await readFile(new URL('icons/toolbar.svg', extensionResources), 'utf8');
     expect(svg).toContain('viewBox="0 0 16 16"');
-    expect(svg).toContain('fill="none"');
-    expect(svg).toContain('stroke="#000"');
+    expect(svg).toBe(await readFile(new URL('../../public/icons/toolbar.svg', import.meta.url), 'utf8'));
   });
 });

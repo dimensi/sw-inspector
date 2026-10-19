@@ -75,6 +75,12 @@ In the installed Safari 27.0 session, reloaded the existing temporary extension 
 
 Build manifest SHA-256: `d55f93b04e4896deea6e5f0ecc7bbc369329a22cdad990d1cc7440f5c294b0c7`. `pnpm sync:safari` rebuilt and synchronized the Xcode resources. The Chrome build keeps the separate PNG set. Automated checks after the SVG switch: 55 tests passed; svelte-check 0 errors/0 warnings; Safari and Chrome builds and `check:manifest` passed. This does not close unrelated native matrix rows above.
 
+### Toolbar contour refinement — 2026-10-19
+
+Replaced centered 1.25-unit strokes with filled one-unit contours aligned to the 16-unit grid; the SVG has a 32px intrinsic size. Ran `sync:logo`, `sync:safari`, the 5 icon/entrypoint tests, `check` (0 errors/0 warnings), and `check:manifest`. Rebuilt and ran the existing Xcode scheme; the SVG in the built app matched the source SHA-256 `2f6a180fcf71489f8b780e910426842e6c94b45478bf86571aacfb797cdb9e8e`.
+
+Reloaded the already-enabled temporary SW Inspector through Safari Settings. The [native toolbar crop](../.impeccable/review/toolbar-pixel-aligned.png) shows the installed copy on the left, the reloaded temporary copy in the middle, and Safari's neighboring control on the right. The reloaded glyph has a thinner divider and straighter edges. A rebuilt app bundle alone does not establish that Safari discarded its cached icon. This checks the light toolbar only; dark appearance and the Inspector tab's updated glyph remain unverified. No toolbar access gesture or page inspection was required.
+
 Follow [README installation](../README.md#build-and-run), reload the extension, and reopen Inspector after rebuilding. Grant access on the actual inspected tab. Use **Diagnostics → Run bridge probe** for synchronous/deferred results; the shipped probe deliberately skips Promise-valued inspected expressions.
 
 Record date, exact Safari/macOS build, extension revision or bundle identity, installation route, origin, permission action, expected/actual result, and evidence for each row tested. Mark only those rows passed. Preserve raw errors; separate IPC validation, native access rejection, and evaluated-page failures. For regressions, use the framework-free repro before changing permissions or transport. The [curated IPC log](evidence/2026-10-19-safari-eval-ipc.txt) and [learnings](LEARNINGS.md) preserve the previous investigation.
