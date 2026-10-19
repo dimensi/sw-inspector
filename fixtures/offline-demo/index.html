@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="stylesheet" href="/assets/app.css" />
+<title>SW Inspector test origin</title>
+<main><h1>SW Inspector fixture</h1><p>Registers a demo Service Worker and populates a small app-shell cache. Use this page to test SW Inspector.</p><p id="status">Registering…</p><nav><a href="/calls/">Calls</a> · <a href="/chats/">Chats</a></nav></main>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(async (reg) => {
+    await navigator.serviceWorker.ready;
+    document.querySelector('#status').textContent = 'Service Worker registered. Refresh once to become controlled.';
+  }).catch((e) => document.querySelector('#status').textContent = String(e));
+} else document.querySelector('#status').textContent = 'Service Workers are not supported.';
+</script>
+</html>

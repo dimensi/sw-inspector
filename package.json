@@ -1,0 +1,31 @@
+{
+  "name": "sw-inspector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Read-only Service Worker and Cache Storage diagnostics inside browser DevTools",
+  "scripts": {
+    "dev": "wxt -b chrome",
+    "build": "pnpm build:safari",
+    "build:safari": "wxt build -b safari --mv3",
+    "build:chrome": "wxt build -b chrome --mv3",
+    "check": "wxt prepare && svelte-check --tsconfig ./tsconfig.json",
+    "check:manifest": "node scripts/check-manifest.mjs",
+    "sync:logo": "node scripts/sync-logo-assets.mjs",
+    "sync:safari": "pnpm build:safari && rsync -av --delete .output/safari-mv3/ 'apple/SW Inspector/SW Inspector Extension/Resources/'",
+    "test": "vitest run",
+    "zip": "wxt zip -b safari --mv3",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@wxt-dev/module-svelte": "^2.0.5",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "3.2.4",
+    "wxt": "^0.20.0"
+  }
+}

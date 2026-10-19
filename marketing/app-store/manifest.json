@@ -1,0 +1,188 @@
+{
+  "generatedOn": "2026-10-19",
+  "language": "en",
+  "capture": "Actual compiled Safari-MV3 panel rendered in Playwright WebKit at 2x with local synthetic browser APIs. Display time fixed at 10:09:41.",
+  "composition": "HTML/CSS in Chromium at 2x; opaque RGB PNG export. Generic window frames on promotional mockups only.",
+  "dataOrigin": "https://demo.example.test",
+  "nativeSafariAcceptance": false,
+  "iconProvenance": "../../.impeccable/assets/logo.json",
+  "sources": [
+    "source/demo-fixture.js",
+    "source/capture.js",
+    "source/compose.js",
+    "source/composition.html",
+    "source/cli.config.json"
+  ],
+  "files": [
+    {
+      "file": "screenshots/01-service-workers.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 222821,
+      "sha256": "a0aaba01502a0b80ec7775a93598847bd091648164967ce62cf52b4d5072617a"
+    },
+    {
+      "file": "screenshots/02-cache-storage.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 387019,
+      "sha256": "1efd3df106e54f62af8425cc1abdea62a429d97238bf630dc74d9266020c8862"
+    },
+    {
+      "file": "screenshots/03-response-preview.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 372504,
+      "sha256": "42e2a4535fb7d341a15ea8f0857ece18b42d7d9ccc06e31320bb386955e31266"
+    },
+    {
+      "file": "screenshots/04-body-measurement.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 367234,
+      "sha256": "c60a81b16d187c24d73a2ff031bac3bb71dc7da3dd9c004fb104a496287f88bf"
+    },
+    {
+      "file": "screenshots/05-offline-resources.png",
+      "width": 2880,
+      "height": 1800,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 217312,
+      "sha256": "6998b3e26a74c022b731fa3d7af4e424defc29ed470a9bac0ec38372d916eb84"
+    },
+    {
+      "file": "mockups/01-workspace.png",
+      "width": 3200,
+      "height": 2000,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 605419,
+      "sha256": "33e941cbb10d25b0b0986345025bbffc922a72fd73c4a5267628c58d0046823d"
+    },
+    {
+      "file": "mockups/02-appearance.png",
+      "width": 3200,
+      "height": 2000,
+      "bitDepth": 8,
+      "colorType": 2,
+      "hasAlpha": false,
+      "bytes": 442743,
+      "sha256": "1238ebb13ddda2294315e8cfb49bacc472cdbd94f244df0485a1986a978c9715"
+    },
+    {
+      "file": "raw/01-service-workers.png",
+      "width": 2684,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 220955,
+      "sha256": "4a929edfe9e7bb9f76b4291b44dd06951f147cc90cb5a95fff9ed5173c91bbcc"
+    },
+    {
+      "file": "raw/02-cache-storage.png",
+      "width": 2684,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 383763,
+      "sha256": "6eb47ade88835742ee0ce8cb45211003002d8642f642f7e9a7ca0c4272043b02"
+    },
+    {
+      "file": "raw/03-response-preview.png",
+      "width": 2684,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 371799,
+      "sha256": "10e5f7c6e864e8bb538a87444a870bd40f0855aa81fb8753048ab4180c52ae28"
+    },
+    {
+      "file": "raw/04-body-measurement.png",
+      "width": 2684,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 362809,
+      "sha256": "0c3315f964c84704c0862b42d8e50f5a0c31a0741a8afe2adc6f69b942b60fc9"
+    },
+    {
+      "file": "raw/05-offline-resources.png",
+      "width": 2684,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 215529,
+      "sha256": "6ccc5d9169e1beee50f5e37abd85305578088cde4b073d39e27f95295e222c9b"
+    },
+    {
+      "file": "raw/06-compact-light.png",
+      "width": 1428,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 207800,
+      "sha256": "50cd2ffe472cc7109fdf01d92d3922b06b0851bceaaaa873338a31dae030f3e4"
+    },
+    {
+      "file": "raw/07-compact-dark.png",
+      "width": 1428,
+      "height": 1340,
+      "bitDepth": 8,
+      "colorType": 6,
+      "hasAlpha": true,
+      "bytes": 211195,
+      "sha256": "aa875612a5455208cbb0e51a7e503f8ac65079c9f1e47840604005c15be18cad"
+    }
+  ],
+  "buildFiles": [
+    {
+      "file": ".output/safari-mv3/devtools.html",
+      "sha256": "57be2236c9745e389990840e2726c033911acf228445920a45c3135f5e3e7e6e"
+    },
+    {
+      "file": ".output/safari-mv3/manifest.json",
+      "sha256": "f1f17451ef8d864cd81c0c2935304179b17f9311a62258a31825b522aeb7a050"
+    },
+    {
+      "file": ".output/safari-mv3/panel.html",
+      "sha256": "585dbe4667be84cf96d6ce71e9ba070b9772f01c1e45f6ee04dd90390bc598b4"
+    },
+    {
+      "file": ".output/safari-mv3/assets/panel-dYcgo18I.css",
+      "sha256": "9164e10a645d9cc2b4cd6aa5eb762b9b7515a9cf5cd0198ceb52b71f62a8841a"
+    },
+    {
+      "file": ".output/safari-mv3/chunks/devtools-BaefznQS.js",
+      "sha256": "7c90599d01a4d22607d7b9a6fbac2322a089a6f353eb80f41d4bee1cdbd0e1b1"
+    },
+    {
+      "file": ".output/safari-mv3/chunks/devtools-relay-B_8DkBRT.js",
+      "sha256": "8f1f916567c730aa5c5e02df22a0e138c2a4f3ca2d43622187b41027d9fb1756"
+    },
+    {
+      "file": ".output/safari-mv3/chunks/panel-BhUUmuU5.js",
+      "sha256": "18108af0d810facf9e9112b444c1b94b40b1fde4d77d2a26aff10932b47d9689"
+    }
+  ]
+}

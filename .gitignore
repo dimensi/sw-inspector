@@ -1,0 +1,9 @@
+node_modules/
+.wxt/
+.output/
+.DS_Store
+*.log
+.test-build/
+.playwright-cli/
+**/xcuserdata/
+**/DerivedData/

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SW Inspector — App Store assets</title>
+<link rel="icon" href="data:,">
+<style>
+  * { box-sizing: border-box; }
+  :root { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #242424; background: #f2f2f2; font-synthesis: none; }
+  body { margin: 0; }
+  .canvas { position: relative; width: 1440px; height: 900px; overflow: hidden; background: #f2f2f2; }
+  .canvas.dark { background: #17181a; color: #f0f1f2; }
+  header { position: absolute; top: 43px; left: 48px; right: 48px; }
+  h1 { margin: 0; max-width: 1180px; font-size: 48px; font-weight: 600; line-height: 1.12; letter-spacing: -1.4px; }
+  header p { margin: 15px 0 0; font-size: 21px; line-height: 1.45; color: #626262; }
+  .dark header p { color: #b7bac0; }
+  .brand { position: absolute; right: 48px; top: 48px; width: 54px; height: 54px; border-radius: 12px; }
+  .panel { position: absolute; left: 48px; top: 174px; width: 1344px; height: 672px; border: 1px solid #c8c8c8; overflow: hidden; background: #fff; }
+  .panel img { width: 100%; height: 100%; display: block; }
+  .dark .panel { border-color: #45474b; }
+  footer { position: absolute; left: 48px; right: 48px; bottom: 21px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #626262; }
+  footer strong { color: #343434; font-weight: 500; }
+  .dark footer { color: #a9adb4; }
+  .dark footer strong { color: #d6d8dc; }
+  .mockup { width: 1600px; height: 1000px; background: #e8eaed; }
+  .mockup header { top: 62px; left: 64px; right: 64px; }
+  .mockup h1 { font-size: 66px; letter-spacing: -2px; max-width: 1300px; }
+  .mockup header p { max-width: 1000px; font-size: 23px; }
+  .mockup .brand { right: 64px; top: 68px; width: 64px; height: 64px; border-radius: 14px; }
+  .window { position: absolute; overflow: hidden; border-radius: 10px; background: #f4f4f4; box-shadow: 0 22px 55px #00000028; }
+  .window-title { height: 34px; display: flex; align-items: center; justify-content: center; position: relative; background: #e7e7e7; color: #555; font-size: 12px; font-weight: 500; border-bottom: 1px solid #ccc; }
+  .dots { position: absolute; left: 13px; display: flex; gap: 7px; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; background: #b8b8b8; }
+  .window img { width: 100%; display: block; }
+  .window.back { left: 64px; top: 245px; width: 1150px; }
+  .window.front { left: 375px; top: 338px; width: 1160px; }
+  .window.night { background: #1e1e1e; }
+  .night .window-title { background: #303134; border-bottom-color: #48494b; color: #d2d3d6; }
+  .night .dots i { background: #64666a; }
+  .mockup footer { left: 64px; right: 64px; bottom: 23px; }
+  .comparison { background: #202124; color: #f3f3f3; }
+  .comparison header p { color: #b4b6bb; }
+  .comparison .window { width: 714px; top: 240px; }
+  .comparison .window.first { left: 64px; }
+  .comparison .window.second { left: 822px; }
+  .comparison .window img { height: 670px; }
+  .comparison footer, .comparison footer strong { color: #b4b6bb; }
+  .contact { width: 1440px; height: auto; padding: 40px; background: #f2f2f2; }
+  .contact h1 { font-size: 28px; letter-spacing: -.5px; }
+  .contact p { font-size: 15px; color: #626262; margin: 8px 0 28px; }
+  .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 24px; }
+  figure { margin: 0; }
+  figure img { width: 100%; display: block; border: 1px solid #ccc; }
+  figcaption { font-size: 14px; margin-top: 8px; color: #555; }
+</style>
+<main id="root"></main>
+<script>
+const shots = [
+  { file:'01-service-workers', title:'Service Workers, inspected.', subtitle:'See registrations, controller state, and origin storage in Safari.', theme:'light' },
+  { file:'02-cache-storage', title:'Explore your Cache Storage.', subtitle:'Browse namespaces and request keys without changing stored data.', theme:'light' },
+  { file:'03-response-preview', title:'Open the response.', subtitle:'Inspect headers. Load a text or JSON preview when you need it.', theme:'dark' },
+  { file:'04-body-measurement', title:'Find the request that matters.', subtitle:'Filter cached URLs, then measure readable response bodies on demand.', theme:'dark' },
+  { file:'05-offline-resources', title:'Check the paths you need.', subtitle:'Look up same-origin cache keys without making network requests.', theme:'light' },
+];
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'store';
+const root = document.querySelector('#root');
+const brand = '<img class="brand" src="/logo.png" alt="">';
+const footer = '<footer><strong>SW Inspector · Safari Web Inspector</strong><span>Read-only diagnostics · Demonstration data</span></footer>';
+const windowMarkup = (classes, file, label) => `<div class="window ${classes}"><div class="window-title"><span class="dots"><i></i><i></i><i></i></span>${label}</div><img src="/pack/raw/${file}.png" alt="SW Inspector interface"></div>`;
+if (mode === 'store') {
+  const shot = shots[Number(params.get('shot') || 0)];
+  root.innerHTML = `<article class="canvas ${shot.theme}"><header><h1>${shot.title}</h1><p>${shot.subtitle}</p></header>${brand}<div class="panel"><img src="/pack/raw/${shot.file}.png" alt="SW Inspector interface"></div>${footer}</article>`;
+} else if (mode === 'workspace') {
+  root.innerHTML = `<article class="canvas mockup"><header><h1>Service Workers and Cache Storage.</h1><p>Read-only diagnostics inside Safari Web Inspector.</p></header>${brand}${windowMarkup('back', '01-service-workers', 'SW Inspector · Service Workers')}${windowMarkup('front night', '03-response-preview', 'SW Inspector · Cache Storage')}${footer}</article>`;
+} else if (mode === 'themes') {
+  root.innerHTML = `<article class="canvas mockup comparison"><header><h1>At home in your Inspector.</h1><p>Compact tables. Focused details. Light and dark appearance.</p></header>${brand}${windowMarkup('first', '06-compact-light', 'Light appearance')}${windowMarkup('second night', '07-compact-dark', 'Dark appearance')}${footer}</article>`;
+} else if (mode === 'contact') {
+  root.innerHTML = `<article class="contact"><h1>SW Inspector — App Store kit</h1><p>Five screenshots · 2880 × 1800 px · English · Two promotional window mockups</p><div class="contact-grid">${shots.map(shot => `<figure><img src="/pack/screenshots/${shot.file}.png" alt="${shot.title}"><figcaption>${shot.file}.png</figcaption></figure>`).join('')}${['01-workspace','02-appearance'].map(file => `<figure><img src="/pack/mockups/${file}.png" alt="Promotional mockup"><figcaption>Mockup · ${file}.png</figcaption></figure>`).join('')}</div></article>`;
+}
+window.assetReady = Promise.all(Array.from(document.images, img => img.decode()));
+</script>
+</html>

@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "Safari Native Eval Repro",
+  "version": "0.1.0",
+  "description": "Manual, constant-expression Web Inspector eval reproduction.",
+  "permissions": ["devtools"],
+  "devtools_page": "devtools.html"
+}

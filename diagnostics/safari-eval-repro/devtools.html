@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Native Eval Repro — devtools page</title>
+    <link rel="stylesheet" href="repro.css">
+  </head>
+  <body data-context="devtools-page">
+    <h1>Devtools page</h1>
+    <p>This is the devtools entrypoint. No evaluation runs automatically.</p>
+    <button id="run-eval" type="button">Evaluate 1 + 1 in devtools-page context</button>
+    <pre id="output" aria-live="polite"></pre>
+    <script src="probe.js"></script>
+    <script src="devtools.js"></script>
+  </body>
+</html>

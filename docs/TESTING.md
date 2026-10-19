@@ -1,0 +1,80 @@
+# Verification and Safari acceptance
+
+This file owns verification procedures and recorded outcomes. A build proves that assets were generated; it does not prove Safari IPC, site access, or async result semantics.
+
+## Automated checks
+
+Run from the project root:
+
+```sh
+pnpm test
+pnpm check
+pnpm build:safari
+pnpm check:manifest
+```
+
+Inspect `.output/safari-mv3/manifest.json`: MV3, `devtools_page: devtools.html`, `devtools` and `activeTab`, no host patterns/background/content scripts. The current manifest script checks the entrypoint, panel file, and `devtools` permission; it does not enforce every item in that list. Use `pnpm sync:safari` before testing the Xcode wrapper.
+
+The suite covers relay/session routing, expression escaping, timeouts/stale results, request identity, bounded previews, measurements, formatting, local errors, metadata export, and icon packaging. Report the count from the run performed, not a copied historical total.
+
+## UI fixture and visual baseline
+
+Build Safari, then run `python3 .impeccable/preview/server.py` and open `http://127.0.0.1:4186/preview.html?session=preview`. Stop the server after use. The fixture provides synthetic in-memory browser data and exercises the built panel; it is not included in the extension bundle and does not inspect a real website.
+
+Inspect both themes, wide and narrow dock widths, long values, empty/error/partial states, keyboard selection, local filtering, explicit preview, measurement, and duplicate offline inputs. Verify no automatic eval on initial mount and no document-wide horizontal overflow. Preserve [DESIGN.md](../DESIGN.md).
+
+Recorded on 2026-10-19: wide light and compact dark layouts, manual refresh/cache inventory, filter, arrow-key selection, preview retaining selection, measurement, duplicate/missing offline paths, permission error, and zero initial eval calls passed in the synthetic fixture. These checks do not replace the native matrix below.
+
+- [Worker properties, 1440×900 light](../.impeccable/review/desktop.png)
+- [Cache and response, 1440×900 light](../.impeccable/review/cache.png)
+- [Compact dock, 390×844 dark](../.impeccable/review/mobile.png)
+- [Dated verification record](../.impeccable/review/result.json)
+
+## Recorded native Safari run — 2026-10-19
+
+| Environment | Value |
+| --- | --- |
+| Safari | 27.0 (21625.1.29.18.28) |
+| macOS | 26.6.2 (25G83) |
+| Extension | 0.1.0, temporary installation from `.output/safari-mv3` |
+| Origin | `https://web-test2.oneme.ru` |
+| Access | `devtools` + `activeTab`; Safari toolbar button on the inspected tab, after user approval; no separate popup observed |
+
+The standalone user-run probe established that devtools-page eval worked while panel eval crashed; its raw tuple and prompt outcome were not supplied. The later corrected-product run was observed through computer use: Inspector stayed open, one registration and an activated `/service-worker.js` controller appeared, `app-cache-20122` loaded 44 request keys, and whole-origin estimated usage was approximately 8.8 MiB.
+
+Exact product probe outcomes (timings were not recorded):
+
+```json
+{"probe":"sync","origin":"https://web-test2.oneme.ru"}
+{"probe":"deferred-started"}
+{"state":"complete","result":{"probe":"deferred","origin":"https://web-test2.oneme.ru"}}
+```
+
+The native run predates the redesigned UI. The controller-label bug was corrected in that redesign and checked with synthetic data; it is not an additional native acceptance claim.
+
+## Native acceptance matrix
+
+| Scenario | Recorded status / remaining check |
+| --- | --- |
+| Minimal panel versus devtools-page eval | User reproduced the context-dependent crash. [Repro](../diagnostics/safari-eval-repro/README.md), [ADR 0002](adr/0002-devtools-page-bridge.md). |
+| Product relay and explicit Refresh | Passed for overview, cache keys, synchronous JSON, and deferred start/poll on the recorded origin. |
+| Temporary site access | Toolbar action enabled the product run. Opening the panel alone did not. |
+| Controlled origin | Data returned as above; independent comparison of every worker lifecycle field remains pending. |
+| No worker / empty caches | Pending native verification; must complete without waiting for `serviceWorker.ready`. |
+| Body measurements | Pending native comparison against known sizes, including opaque and partial/error results. |
+| Text preview / offline paths / export | Pending native verification; confirm bounded text, key presence only, no network probes, and no bodies/previews in export. |
+| Navigation / cancellation | Incomplete: reload did not trigger automatic invalidation under temporary `activeTab`. Keep **Refresh after navigation**. Cross-origin navigation, concurrent Inspectors, and cancellation still need native checks. |
+| Error and large-data states | Pending native matrix for denied access, missing APIs, null quota, expired snapshots, and large/partial caches. |
+| Other Safari versions / Xcode packaging | Not established by this run; compare identical files before drawing conclusions. |
+
+## Repeat a native check
+
+### Toolbar asset check — 2026-10-19
+
+In the installed Safari 27.0 session, reloaded the existing temporary extension from `.output/safari-mv3` through Settings → Extensions → SW Inspector → Reload. With `action.default_icon: "/icons/toolbar.svg"`, the toolbar visibly rendered the transparent inspector glyph without the former opaque square. This checks the native light appearance only; native dark appearance and other Safari versions remain unverified. No new site-access grant or inspected-page mutation was used for this visual check. The existing inspected origin was `https://web-test2.oneme.ru`.
+
+Build manifest SHA-256: `d55f93b04e4896deea6e5f0ecc7bbc369329a22cdad990d1cc7440f5c294b0c7`. `pnpm sync:safari` rebuilt and synchronized the Xcode resources. The Chrome build keeps the separate PNG set. Automated checks after the SVG switch: 55 tests passed; svelte-check 0 errors/0 warnings; Safari and Chrome builds and `check:manifest` passed. This does not close unrelated native matrix rows above.
+
+Follow [README installation](../README.md#build-and-run), reload the extension, and reopen Inspector after rebuilding. Grant access on the actual inspected tab. Use **Diagnostics → Run bridge probe** for synchronous/deferred results; the shipped probe deliberately skips Promise-valued inspected expressions.
+
+Record date, exact Safari/macOS build, extension revision or bundle identity, installation route, origin, permission action, expected/actual result, and evidence for each row tested. Mark only those rows passed. Preserve raw errors; separate IPC validation, native access rejection, and evaluated-page failures. For regressions, use the framework-free repro before changing permissions or transport. The [curated IPC log](evidence/2026-10-19-safari-eval-ipc.txt) and [learnings](LEARNINGS.md) preserve the previous investigation.

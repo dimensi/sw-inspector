@@ -1,0 +1,22 @@
+{
+  "asset": "../../logo.png",
+  "date": "2026-10-19",
+  "useCase": "logo-brand",
+  "tool": "image_gen.imagegen (built-in)",
+  "generationFile": "exec-26c65a84-9ce1-480c-8019-a607f1dedbde.png",
+  "sourceDimensions": {
+    "width": 1254,
+    "height": 1254
+  },
+  "sha256": "8f44b36f488b156b83e473bce1f0ac4198c7a2ba373fad3a1c98af712665b61f",
+  "transparentBackground": false,
+  "prompt": "Create the final production icon for SW Inspector, a Safari developer extension. Use case logo-brand. Square canvas, at least1024x1024. OPAQUE IMAGE, fully filled from edge to edge with one absolutely uniform light-neutral gray #F2F2F2. The background is the entire square image, with perfectly straight image edges. There is no separate tile, no floating rounded square, no outer margin in a different color, no alpha channel cutout and no transparent edges.\nCenter one simple flat graphite #242424 UI glyph on this canvas: a broad rounded-rectangle outline of an inspector window, with one vertical divider at its left third. In its wide right pane, exactly two horizontal short bars with gently rounded ends: top bar Inspector Blue #0A62C9, lower bar graphite #242424. Outer window outline is about62% of canvas width and48% of its height; consistent bold strokes about4% of canvas width. Center optical mass and keep generous interior gaps. The glyph is geometrically precise, bilaterally aligned, very high contrast, and readable at16px. Only three uniform solid colors; crisp anti-aliased vector-style edges.\nThis is a sober flat developer-tool symbol, like a Safari Storage/Network pane icon. NOT an illustration, screen mockup, or marketing artwork. No text, no lettering, no circles/dots for window buttons, no gear, database cylinder, lens, sparkles, extra symbols, 3D, shadow, glow, texture, gradient, lighting variation, color noise, or watermark. No artwork beyond the simple inspector glyph. Opaque square source PNG with clean edges.",
+  "selectionReason": "Flat neutral/graphite inspector pane with one blue row; selected opaque output avoids edge artifacts seen in discarded transparent drafts.",
+  "processing": "Copied generated source unchanged to logo.png. Renditions generated with scripts/sync-logo-assets.mjs using sips, then synchronized through pnpm sync:safari.",
+  "consumers": [
+    "public/icons/{16,32,48,128}.png",
+    "apple/SW Inspector/SW Inspector/Assets.xcassets/AppIcon.appiconset/app-icon-*.png",
+    "apple/SW Inspector/SW Inspector/Resources/Icon.png"
+  ],
+  "verification": "Source and 16/32/128px renditions visually checked; extension copies matched byte-for-byte; source/generated PNG dimensions checked."
+}

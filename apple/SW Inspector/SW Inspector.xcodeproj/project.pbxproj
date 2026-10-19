@@ -1,0 +1,605 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 110;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		EEDABA323086412E007892A8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDABA313086412E007892A8 /* AppDelegate.swift */; };
+		EEDABA363086412E007892A8 /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA343086412E007892A8 /* Main.html */; };
+		EEDABA383086412E007892A8 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA373086412E007892A8 /* Icon.png */; };
+		EEDABA3A3086412E007892A8 /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA393086412E007892A8 /* Style.css */; };
+		EEDABA3C3086412E007892A8 /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA3B3086412E007892A8 /* Script.js */; };
+		EEDABA3E3086412E007892A8 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDABA3D3086412E007892A8 /* ViewController.swift */; };
+		EEDABA413086412E007892A8 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA3F3086412E007892A8 /* Main.storyboard */; };
+		EEDABA433086412F007892A8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA423086412F007892A8 /* Assets.xcassets */; };
+		EEDABA4A3086412F007892A8 /* SW Inspector Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EEDABA493086412F007892A8 /* SW Inspector Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		EEDABA4F3086412F007892A8 /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDABA4E3086412F007892A8 /* SafariWebExtensionHandler.swift */; };
+		EEDABA6130864130007892A8 /* devtools.html in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA5B30864130007892A8 /* devtools.html */; };
+		EEDABA6230864130007892A8 /* icon-16.svg in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA5C30864130007892A8 /* icon-16.svg */; };
+		EEDABA6330864130007892A8 /* chunks in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA5D30864130007892A8 /* chunks */; };
+		EEDABA6430864130007892A8 /* panel.html in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA5E30864130007892A8 /* panel.html */; };
+		EEDABA6530864130007892A8 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA5F30864130007892A8 /* manifest.json */; };
+		EEDABA6630864130007892A8 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA6030864130007892A8 /* assets */; };
+		EEDABA6730864130007892A8 /* icons in Resources */ = {isa = PBXBuildFile; fileRef = EEDABA6830864130007892A8 /* icons */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		EEDABA4B3086412F007892A8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = EEDABA263086412E007892A8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EEDABA483086412F007892A8;
+			remoteInfo = "SW Inspector Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EEDABA563086412F007892A8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				EEDABA4A3086412F007892A8 /* SW Inspector Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		EEDABA2E3086412E007892A8 /* SW Inspector.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SW Inspector.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EEDABA313086412E007892A8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		EEDABA353086412E007892A8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		EEDABA373086412E007892A8 /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		EEDABA393086412E007892A8 /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		EEDABA3B3086412E007892A8 /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		EEDABA3D3086412E007892A8 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		EEDABA403086412E007892A8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		EEDABA423086412F007892A8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EEDABA443086412F007892A8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EEDABA493086412F007892A8 /* SW Inspector Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "SW Inspector Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EEDABA4E3086412F007892A8 /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		EEDABA503086412F007892A8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		EEDABA5B30864130007892A8 /* devtools.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = devtools.html; path = Resources/devtools.html; sourceTree = "<group>"; };
+		EEDABA5C30864130007892A8 /* icon-16.svg */ = {isa = PBXFileReference; lastKnownFileType = text; name = "icon-16.svg"; path = "Resources/icon-16.svg"; sourceTree = "<group>"; };
+		EEDABA5D30864130007892A8 /* chunks */ = {isa = PBXFileReference; lastKnownFileType = folder; name = chunks; path = Resources/chunks; sourceTree = "<group>"; };
+		EEDABA5E30864130007892A8 /* panel.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = panel.html; path = Resources/panel.html; sourceTree = "<group>"; };
+		EEDABA5F30864130007892A8 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+		EEDABA6030864130007892A8 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = Resources/assets; sourceTree = "<group>"; };
+		EEDABA6830864130007892A8 /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = Resources/icons; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		EEDABA2B3086412E007892A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+		EEDABA463086412F007892A8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		EEDABA253086412E007892A8 = {
+			isa = PBXGroup;
+			children = (
+				EEDABA303086412E007892A8 /* SW Inspector */,
+				EEDABA4D3086412F007892A8 /* SW Inspector Extension */,
+				EEDABA2F3086412E007892A8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		EEDABA2F3086412E007892A8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				EEDABA2E3086412E007892A8 /* SW Inspector.app */,
+				EEDABA493086412F007892A8 /* SW Inspector Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		EEDABA303086412E007892A8 /* SW Inspector */ = {
+			isa = PBXGroup;
+			children = (
+				EEDABA313086412E007892A8 /* AppDelegate.swift */,
+				EEDABA3D3086412E007892A8 /* ViewController.swift */,
+				EEDABA3F3086412E007892A8 /* Main.storyboard */,
+				EEDABA423086412F007892A8 /* Assets.xcassets */,
+				EEDABA443086412F007892A8 /* Info.plist */,
+				EEDABA333086412E007892A8 /* Resources */,
+			);
+			path = "SW Inspector";
+			sourceTree = "<group>";
+		};
+		EEDABA333086412E007892A8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				EEDABA343086412E007892A8 /* Main.html */,
+				EEDABA373086412E007892A8 /* Icon.png */,
+				EEDABA393086412E007892A8 /* Style.css */,
+				EEDABA3B3086412E007892A8 /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		EEDABA4D3086412F007892A8 /* SW Inspector Extension */ = {
+			isa = PBXGroup;
+			children = (
+				EEDABA5A30864130007892A8 /* Resources */,
+				EEDABA4E3086412F007892A8 /* SafariWebExtensionHandler.swift */,
+				EEDABA503086412F007892A8 /* Info.plist */,
+			);
+			path = "SW Inspector Extension";
+			sourceTree = "<group>";
+		};
+		EEDABA5A30864130007892A8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				EEDABA5B30864130007892A8 /* devtools.html */,
+				EEDABA5C30864130007892A8 /* icon-16.svg */,
+				EEDABA5D30864130007892A8 /* chunks */,
+				EEDABA5E30864130007892A8 /* panel.html */,
+				EEDABA5F30864130007892A8 /* manifest.json */,
+				EEDABA6030864130007892A8 /* assets */,
+				EEDABA6830864130007892A8 /* icons */,
+			);
+			name = Resources;
+			path = "SW Inspector Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EEDABA2D3086412E007892A8 /* SW Inspector */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EEDABA573086412F007892A8 /* Build configuration list for PBXNativeTarget "SW Inspector" */;
+			buildPhases = (
+				EEDABA2A3086412E007892A8 /* Sources */,
+				EEDABA2B3086412E007892A8 /* Frameworks */,
+				EEDABA2C3086412E007892A8 /* Resources */,
+				EEDABA563086412F007892A8 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EEDABA4C3086412F007892A8 /* PBXTargetDependency */,
+			);
+			name = "SW Inspector";
+			productName = "SW Inspector";
+			productReference = EEDABA2E3086412E007892A8 /* SW Inspector.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EEDABA483086412F007892A8 /* SW Inspector Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EEDABA533086412F007892A8 /* Build configuration list for PBXNativeTarget "SW Inspector Extension" */;
+			buildPhases = (
+				EEDABA453086412F007892A8 /* Sources */,
+				EEDABA463086412F007892A8 /* Frameworks */,
+				EEDABA473086412F007892A8 /* Resources */,
+			);
+			buildRules = (
+			);
+			name = "SW Inspector Extension";
+			productName = "SW Inspector Extension";
+			productReference = EEDABA493086412F007892A8 /* SW Inspector Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		EEDABA263086412E007892A8 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					EEDABA2D3086412E007892A8 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					EEDABA483086412F007892A8 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = EEDABA293086412E007892A8 /* Build configuration list for PBXProject "SW Inspector" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = EEDABA253086412E007892A8;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = EEDABA2F3086412E007892A8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EEDABA2D3086412E007892A8 /* SW Inspector */,
+				EEDABA483086412F007892A8 /* SW Inspector Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EEDABA2C3086412E007892A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				EEDABA383086412E007892A8 /* Icon.png in Resources */,
+				EEDABA413086412E007892A8 /* Main.storyboard in Resources */,
+				EEDABA3C3086412E007892A8 /* Script.js in Resources */,
+				EEDABA363086412E007892A8 /* Main.html in Resources */,
+				EEDABA433086412F007892A8 /* Assets.xcassets in Resources */,
+				EEDABA3A3086412E007892A8 /* Style.css in Resources */,
+			);
+		};
+		EEDABA473086412F007892A8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+				EEDABA6330864130007892A8 /* chunks in Resources */,
+				EEDABA6430864130007892A8 /* panel.html in Resources */,
+				EEDABA6530864130007892A8 /* manifest.json in Resources */,
+				EEDABA6630864130007892A8 /* assets in Resources */,
+				EEDABA6730864130007892A8 /* icons in Resources */,
+				EEDABA6230864130007892A8 /* icon-16.svg in Resources */,
+				EEDABA6130864130007892A8 /* devtools.html in Resources */,
+			);
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		EEDABA2A3086412E007892A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				EEDABA3E3086412E007892A8 /* ViewController.swift in Sources */,
+				EEDABA323086412E007892A8 /* AppDelegate.swift in Sources */,
+			);
+		};
+		EEDABA453086412F007892A8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				EEDABA4F3086412F007892A8 /* SafariWebExtensionHandler.swift in Sources */,
+			);
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EEDABA4C3086412F007892A8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EEDABA483086412F007892A8 /* SW Inspector Extension */;
+			targetProxy = EEDABA4B3086412F007892A8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		EEDABA343086412E007892A8 /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				EEDABA353086412E007892A8 /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		EEDABA3F3086412E007892A8 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				EEDABA403086412E007892A8 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		EEDABA513086412F007892A8 /* Debug configuration for PBXProject "SW Inspector" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.6;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		EEDABA523086412F007892A8 /* Release configuration for PBXProject "SW Inspector" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.6;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		EEDABA543086412F007892A8 /* Debug configuration for PBXNativeTarget "SW Inspector Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YBBAN7R28K;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SW Inspector Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SW Inspector Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.dimensi.swinspector.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		EEDABA553086412F007892A8 /* Release configuration for PBXNativeTarget "SW Inspector Extension" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YBBAN7R28K;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SW Inspector Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SW Inspector Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.dimensi.swinspector.Extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		EEDABA583086412F007892A8 /* Debug configuration for PBXNativeTarget "SW Inspector" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YBBAN7R28K;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SW Inspector/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SW Inspector";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.dimensi.swinspector;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		EEDABA593086412F007892A8 /* Release configuration for PBXNativeTarget "SW Inspector" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = YBBAN7R28K;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SW Inspector/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "SW Inspector";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				INFOPLIST_KEY_NSViewGestureRecognizerIsExclusive = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.dimensi.swinspector;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		EEDABA293086412E007892A8 /* Build configuration list for PBXProject "SW Inspector" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEDABA513086412F007892A8 /* Debug configuration for PBXProject "SW Inspector" */,
+				EEDABA523086412F007892A8 /* Release configuration for PBXProject "SW Inspector" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		EEDABA533086412F007892A8 /* Build configuration list for PBXNativeTarget "SW Inspector Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEDABA543086412F007892A8 /* Debug configuration for PBXNativeTarget "SW Inspector Extension" */,
+				EEDABA553086412F007892A8 /* Release configuration for PBXNativeTarget "SW Inspector Extension" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		EEDABA573086412F007892A8 /* Build configuration list for PBXNativeTarget "SW Inspector" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EEDABA583086412F007892A8 /* Debug configuration for PBXNativeTarget "SW Inspector" */,
+				EEDABA593086412F007892A8 /* Release configuration for PBXNativeTarget "SW Inspector" */,
+			);
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = EEDABA263086412E007892A8 /* Project object */;
+	validationLevel = 1;
+}

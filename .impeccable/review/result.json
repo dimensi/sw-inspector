@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-19",
+  "target": "entrypoints/panel/App.svelte",
+  "direction": "Safari Web Inspector — Storage and Network",
+  "finishReview": { "disposition": "ship", "materialFixes": [] },
+  "detector": [],
+  "captures": [
+    { "file": "desktop.png", "viewport": "1440x900", "theme": "light", "state": "Service Worker properties" },
+    { "file": "cache.png", "viewport": "1440x900", "theme": "light", "state": "Cache inventory, selected request, explicit response preview and body measurement" },
+    { "file": "mobile.png", "viewport": "390x844", "theme": "dark", "state": "Compact dock with request table and response details below" }
+  ],
+  "data": "Synthetic in-memory fixture; not a native Safari integration run",
+  "checks": {
+    "pnpm test": "53 passed, 13 files",
+    "pnpm check": "0 errors, 0 warnings",
+    "pnpm build:safari": "passed",
+    "pnpm check:manifest": "passed"
+  },
+  "browserChecks": [
+    "No evaluation on initial mount",
+    "Explicit refresh and cache inventory",
+    "Local URL filter",
+    "Keyboard request selection",
+    "Explicit preview preserves selected row",
+    "Explicit body measurement",
+    "Duplicate offline paths and missing cache key",
+    "Permission error with actionable recovery",
+    "No document overflow at 1440px or 390px"
+  ]
+}

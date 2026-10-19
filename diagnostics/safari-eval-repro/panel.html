@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Safari Native Eval Repro</title>
+    <link rel="stylesheet" href="repro.css">
+  </head>
+  <body data-context="panel">
+    <h1>Safari native eval reproduction</h1>
+    <p>Both buttons evaluate only <code>1 + 1</code>. Copy the ready records before testing; a process crash may lose the log.</p>
+    <p>Run one button per fresh Web Inspector session and record which button you used.</p>
+    <button id="run-eval" type="button">Evaluate from panel</button>
+    <button id="run-devtools-eval" type="button" disabled>Evaluate from devtools page</button>
+    <p id="devtools-status">Connecting to the devtools entrypoint through runtime messaging.</p>
+    <pre id="output" aria-live="polite"></pre>
+    <script src="probe.js"></script>
+    <script src="panel.js"></script>
+  </body>
+</html>

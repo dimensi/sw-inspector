@@ -1,0 +1,22 @@
+Safari 27.0 (21625.1.29.18.28); macOS unified log; timestamps Europe/Moscow.
+Read 2026-10-19; selected events from 15:48:31 through 15:48:36.
+Selected event messages are preserved verbatim. WebKit itself truncates the longer second preference record.
+Inspector default false values are inferred from local source; they are not explicit values in this log.
+Page roles are inferred from Inspector pool lifecycle, configurations, and panel subframe creation.
+
+2026-10-19 15:48:31.183738+0300 0xc48037018 - [pageProxyID=801, webPageID=802, PID=0] WebPageProxy::constructor, site isolation enabled 0, site isolation shared process enabled 0
+2026-10-19 15:48:31.234539+0300 0x1190940c0 - [PID=44308] WebProcessProxy::didFinishLaunching:
+2026-10-19 15:48:31.411233+0300 WebContent[44308] WebPreferencesStore: non-default preferences: MediaDevicesEnabled=true, ShouldRestrictBaseURLSchemes=true, DiagnosticLoggingEnabled=true, AllowFileAccessFromFileURLs=true, IFrameResourceMonitoringEnabled=true, StorageBlockingPolicy=0, AllowTopNavigationToDataURLs=true, AllowUniversalAccessFromFileURLs=true
+2026-10-19 15:48:31.434757+0300 0xc48037018 - [pageProxyID=801, webPageID=802, PID=44308] WebPageProxy::didCommitLoadForFrame: frameID=4294967316, isMainFrame=1
+2026-10-19 15:48:31.574468+0300 0xc48036818 - [pageProxyID=813, webPageID=814, PID=0] WebPageProxy::constructor, site isolation enabled 0, site isolation shared process enabled 0
+2026-10-19 15:48:31.637417+0300 0x119094680 - [PID=44443] WebProcessProxy::didFinishLaunching:
+2026-10-19 15:48:31.820308+0300 WebContent[44443] WebPreferencesStore: non-default preferences: HiddenPageDOMTimerThrottlingEnabled=false, SampledPageTopColorMaxDifference=5, ShouldRestrictBaseURLSchemes=true, ShouldTakeNearSuspendedAssertions=true, AllowsPictureInPictureMediaPlayback=true, PageVisibilityBasedProcessSuppressionEnabled=false, ShouldSuppressTextInputFromEditingDuringProvisionalNavigation=true, HiddenPageDOMTimerThrottlingAutoIncreases=true, AggressiveTileRetentionEnabled=true, DeveloperExtrasEnabled=true, PushAPIEnabled=true, StorageBlockingPolicy=0, ShouldDropNearSuspendedAssertionAfterDelay=false, ShowsToolTipOverTruncatedText=true, FullScreenEnabled=true, BackgroundWebContentRunningBoardThrottlingEnabled=false, IsAccessibilityIsolatedTreeEnabled=true, ServiceControlsEnabled=true, SampledPageTopColorMinHeight=30, ShouldAllowUserInstalledFonts=false, IFrameResourceMonitoringEnabled=true, ApplePayEnabled=true, BackspaceKeyNavigationEnabled=false, DiagnosticLoggingEnabled=true, MediaDevicesEnabled=true, InvisibleAutoplayNotPermit<…>
+2026-10-19 15:48:32.042148+0300 0xc48036818 - [pageProxyID=813, webPageID=814, PID=44443] WebPageProxy::didCommitLoadForFrame: frameID=4294967317, isMainFrame=1
+2026-10-19 15:48:32.551377+0300 0xc48037018 - [pageProxyID=801, webPageID=802, PID=44308] WebPageProxy::didCommitLoadForFrame: frameID=137438953499, isMainFrame=0
+2026-10-19 15:48:35.120313+0300 Message WebExtensionContext_DevToolsInspectedWindowEval fails validation
+2026-10-19 15:48:35.120354+0300 Received an invalid message WebExtensionContext_DevToolsInspectedWindowEval from WebContent process with PID 44308
+2026-10-19 15:48:35.157911+0300 0x1190940c0 - [PID=44308] WebProcessProxy::didClose: (web process 44308 crash)
+
+After the user reported the standalone minimal run, a fresh read found:
+2026-10-19 15:59:17.544 E Safari[12755:33829e] [com.apple.WebKit:IPC] Message WebExtensionContext_DevToolsInspectedWindowEval fails validation
+2026-10-19 15:59:17.544 E Safari[12755:33829e] [com.apple.WebKit:IPC] Received an invalid message WebExtensionContext_DevToolsInspectedWindowEval from WebContent process with PID 15019
