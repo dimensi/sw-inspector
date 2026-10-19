@@ -2,6 +2,14 @@
 
 Read-only Service Worker and Cache Storage diagnostics inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, and a local JSON report.
 
+## Support
+
+For help, bug reports, or feature requests, [open a GitHub issue](https://github.com/dimensi/sw-inspector/issues/new) or [browse existing issues](https://github.com/dimensi/sw-inspector/issues).
+
+For bug reports, include your macOS, Safari, and SW Inspector versions, what you expected, what happened, and steps to reproduce. Remove personal data, credentials, and private URLs from screenshots or diagnostic reports before posting; GitHub issues are public.
+
+If inspection reports that the extension cannot access the current tab, click **SW Inspector** in Safari's toolbar on that tab, then click **Refresh** in the Inspector panel. Refresh again after navigating to another page.
+
 ## Build and run
 
 Requirements: Node.js 20.19+ on the 20.x line, or 22.12+, and pnpm (the installed Vite engine constraint).
