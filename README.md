@@ -10,6 +10,10 @@ For bug reports, include your macOS, Safari, and SW Inspector versions, what you
 
 If inspection reports that the extension cannot access the current tab, click **SW Inspector** in Safari's toolbar on that tab, then click **Refresh** in the Inspector panel. Refresh again after navigating to another page.
 
+## Privacy
+
+Inspection data is processed locally on your Mac. SW Inspector does not upload it or include telemetry. See the [Privacy Policy](PRIVACY.md) for details about local processing, exported reports, and your controls.
+
 ## Build and run
 
 Requirements: Node.js 20.19+ on the 20.x line, or 22.12+, and pnpm (the installed Vite engine constraint).
