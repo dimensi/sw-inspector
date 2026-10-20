@@ -27,7 +27,7 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 - Local metadata-only JSON export; no server, telemetry, or automatic body collection.
 - Explicit **Delete cache…** prepares a document-bound confirmation for one named namespace; Cancel has no effect. Results distinguish deleted, absent, failed, and unknown. The site may recreate a cache.
 - Explicit **Delete all caches…** prepares the full fixed list of at most 100 namespace names with origin and count. **Delete listed caches** deletes that list sequentially; newly created names are excluded. Per-name applied, absent, failed and skipped outcomes remain distinct. More than 100 names requires deleting individually.
-- Explicit **Delete entry…** confirms the method, full URL and cache name, then deletes using the retained Cache and Request. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
+- Explicit **Delete entry** immediately deletes the selected entry using its retained Cache and Request, without a confirmation dialog. It still prepares a fresh document-bound ticket before committing once. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
 - No worker lifecycle controls, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
 - The execution route and permission boundary are recorded in [ADR 0002](docs/adr/0002-devtools-page-bridge.md). Safari 27.0 navigation under temporary access remains a known limitation.
 

@@ -387,7 +387,7 @@
 {/snippet}
 
 <main class="inspector">
-{#if actionState.ticket && (actionState.phase === 'confirming' || actionState.phase === 'running')}
+{#if actionState.ticket && actionState.ticket.kind !== 'delete-cache-entry' && (actionState.phase === 'confirming' || actionState.phase === 'running')}
   <ActionConfirmation ticket={actionState.ticket} busy={actionState.phase === 'running'} onconfirm={() => { void actions.confirm(); }} oncancel={actions.cancel} restoreFocus={restoreActionFocus} />
 {/if}
 
@@ -498,7 +498,7 @@
             <div class="table-footer">{selectedInventory?.partial ? 'Partial inventory' : 'Cached requests'}<span class="toolbar-space"></span><span>Metadata only</span></div>
           </div>
           <aside class="details-pane" aria-label="Selected response">
-            <div class="pane-toolbar"><h2>Response</h2><span class="toolbar-space"></span><button onclick={(event) => { if (!selectedEntry || !selectedInventory) return; actionTrigger = event.currentTarget; entryActionCache = selectedInventory.cacheName; void actions.prepare({ kind: 'delete-cache-entry', cacheName: selectedInventory.cacheName, requestKey: selectedEntry.requestKey }); }} disabled={!overview?.page || !selectedEntry || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete entry…</button></div>
+            <div class="pane-toolbar"><h2>Response</h2><span class="toolbar-space"></span><button onclick={(event) => { if (!selectedEntry || !selectedInventory) return; actionTrigger = event.currentTarget; entryActionCache = selectedInventory.cacheName; refreshButton?.focus(); void actions.deleteEntry({ kind: 'delete-cache-entry', cacheName: selectedInventory.cacheName, requestKey: selectedEntry.requestKey }); }} disabled={!overview?.page || !selectedEntry || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete entry</button></div>
             <div class="details-scroll">
               {#if selectedEntry}<div class="request-location"><code>{selectedEntry.url}</code></div>{/if}
               {#if operationError?.area === 'details'}<p class="notice error" role="alert">{operationError.message}</p>{/if}

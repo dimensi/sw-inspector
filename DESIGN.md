@@ -256,6 +256,8 @@ Warnings and errors are full-width local strips with semantic color and plain te
 
 ### Cache action results
 
+**Delete entry** acts directly on the selected response, without an ellipsis or confirmation dialog. Namespace and batch deletion keep their existing confirmation dialogs. Move focus to Refresh when the direct action starts so disabling its opener never strands keyboard focus; later results do not steal focus. Retain the same compact receipt and explicit Refresh for unknown outcomes.
+
 Cache deletion results sit directly below the relevant Cache Storage toolbar. A confirmed success uses one neutral line, such as “Deleted 2 caches.”, a native **Details** disclosure collapsed by default, and a small close control with an accessible label. Omit zero counts and transport outcome terminology from the summary. Details retain every full target name and its individual outcome/message, with bounded local scrolling and the reminder that the site may recreate caches.
 
 Already absent, failed and not-attempted targets remain distinct in plain language. Partial/error results use the existing semantic notice colors and offer Refresh; an unknown outcome keeps its warning and explicit Refresh until dismissed or the existing action context resets. Results render in the current inspection content and survive a separate overview refresh failure; existing action-context resets still clear them when changing panes. Do not use a global top banner, toast, timer or automatic dismissal.
