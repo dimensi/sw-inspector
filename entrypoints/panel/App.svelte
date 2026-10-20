@@ -10,6 +10,7 @@
   import { createTransport } from '../../src/bridge/transport';
   import { formatBytes, formatStoragePercentage } from '../../src/domain/format';
   import { deriveInspectionStatus } from '../../src/domain/inspection-status';
+  import { describeInspectionError } from '../../src/domain/inspection-error';
   import type { CacheDetails, CacheInventory, CacheMeasurement, OfflineCheck, Overview } from '../../src/domain/types';
   import { buildReport } from '../../src/export/report';
 
@@ -38,6 +39,7 @@
   let working = $state('');
   type OperationArea = 'cache' | 'details' | 'measure' | 'offline';
   let inspectionError = $state<string | null>(null);
+  const inspectionFailure = $derived(inspectionError ? describeInspectionError(inspectionError) : null);
   let operationError = $state<{ area: OperationArea; message: string } | null>(null);
   let probeResults = $state<Array<{ label: string; outcome: string }>>([]);
   let navigationGeneration = 0;
@@ -448,7 +450,7 @@
 
     <section class="content" aria-label="Inspection content" aria-busy={loading}>
       {#if inspectionError}
-        <div class="notice error" role="alert"><Icon name="warning" /><div><strong>Inspection failed</strong><p>{inspectionError}</p>{#if inspectionError.includes('does not have access')}<p>Click SW Inspector in Safari’s toolbar to allow this tab, then refresh.</p>{/if}</div></div>
+        <div class="notice error" role="alert"><Icon name="warning" /><div><strong>{inspectionFailure?.title}</strong><p>{inspectionFailure?.message}</p>{#if inspectionFailure?.technicalDetails}<details><summary>Technical details</summary><p>{inspectionFailure.technicalDetails}</p></details>{/if}</div></div>
       {/if}
 
       {#if view !== 'cache' && view !== 'caches'}{@render actionResult()}{/if}

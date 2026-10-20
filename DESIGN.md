@@ -252,7 +252,7 @@ A muted label column aligns against a primary-value column. Technical strings wr
 
 ### Notices and empty states
 
-Warnings and errors are full-width local strips with semantic color and plain text. Blank panes explain the next action in ordinary body copy. Partial inventory and measurement states remain explicit. The status bar reports the inspection state and the manual-refresh limitation without becoming a hero surface.
+Warnings and errors are full-width local strips with semantic color and plain text. Blank panes explain the next action in ordinary body copy. Partial inventory and measurement states remain explicit. The status bar reports the inspection state and the manual-refresh limitation without becoming a hero surface. For the recognized Safari tab-access denial, lead with **Allow access to this tab** and the toolbar/Refresh instruction; retain the original error under **Technical details**. Evaluation API, relay and other ambiguous failures keep their actual error and do not imply a permission diagnosis.
 
 ### Cache action results
 
