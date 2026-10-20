@@ -3,6 +3,7 @@ import { deriveInspectionStatus } from '../../src/domain/inspection-status';
 import type { Overview } from '../../src/domain/types';
 
 const controlledOverview: Overview = {
+  page: { documentId: 'private-document', origin: 'https://app.test', url: 'https://app.test/' },
   origin: 'https://app.example.test',
   registrations: [{ scope: 'https://app.example.test/', installing: null, waiting: null, active: { scriptURL: '/sw.js', state: 'activated' } }],
   controller: { scriptURL: '/sw.js', state: 'activated' },

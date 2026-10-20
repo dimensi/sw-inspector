@@ -1,5 +1,6 @@
+import type { InspectorCommand } from '../domain/commands';
 import { createJobPollExpression, createJobStartExpression } from './expressions';
-import type { DiagnosticCommand, DiagnosticErrorCode, Result } from '../domain/types';
+import type { DiagnosticErrorCode, Result } from '../domain/types';
 
 export type EvalException = {
   isException?: boolean;
@@ -79,7 +80,7 @@ export function createTransport(evaluate: EvalFn, options: TransportOptions = {}
     invalidate() {
       generation += 1;
     },
-    async invoke<T>(command: DiagnosticCommand, invokeOptions: InvokeOptions = {}): Promise<Result<T>> {
+    async invoke<T>(command: InspectorCommand, invokeOptions: InvokeOptions = {}): Promise<Result<T>> {
       if (invokeOptions.signal?.aborted) return failure('aborted', 'Inspection was cancelled') as Result<T>;
 
       const requestGeneration = generation;

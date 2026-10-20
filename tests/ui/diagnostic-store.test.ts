@@ -3,6 +3,7 @@ import { createDiagnosticStore } from '../../src/ui/diagnostic-store.svelte';
 import type { Overview, Result } from '../../src/domain/types';
 
 const overview: Overview = {
+  page: { documentId: 'private-document', origin: 'https://app.test', url: 'https://app.test/' },
   origin: 'https://one.test', registrations: [], controller: null, caches: [],
   storage: { usageBytes: null, quotaBytes: null }, warnings: [],
 };

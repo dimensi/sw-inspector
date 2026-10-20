@@ -6,7 +6,7 @@
 **Architecture:** Сохранить devtools-page relay/start-poll. Ввести page identity, одноразовый prepare/commit и локальный controller подтверждения. Page-side handlers добавляются последующими планами.
 **Tech Stack:** существующие TypeScript, Svelte 5, WXT, Vitest, Web APIs; без новой runtime dependency.
 **Spec:** [development design](2026-10-19-development-design.md), [ADR 0004, proposed](../adr/0004-explicit-development-actions.md).
-**Status:** Planned; prerequisites выполнены только для чтения текущего кода. Это не отчёт о реализации.
+**Status:** Partial foundation, 2026-10-20: A1 code-complete и прошла независимые code/design review; native Safari acceptance pending. A2–A4 не реализованы. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20).
 
 ## Global Constraints
 
@@ -32,12 +32,12 @@
 
 **Interfaces:** `createPageContext(registryKey:string):PageContext`, PageIdentity/PageContext ровно из design. `InspectorCommand` initially включает `DiagnosticCommand | {type:'page-context'}`. `Overview.page:PageIdentity`. `createPageRunner(snapshotRegistryKey?, context?)` сохраняет текущие unit callers; production всегда передаёт context, default контекст разрешён только для прямого исполнения через `executeDiagnostic`, также привязан к документу.
 
-- [ ] Написать `same_document_reuses_identity_but_fresh_realm_does_not`: два вызова одного registry в том же документе дают один documentId; новый документ по тому же URL даёт другой; другой Inspector key изолирован.
-- [ ] Написать `pagehide_disposes_once_and_bfcache_does_not_restore_handles`: dispose callback вызывается один раз, registries пусты, старый expectedPage не принимается после pageshow. Поменять только hash/path → isCurrent(old) false.
-- [ ] Написать `unknown_command_does_not_run_check_urls`: любой нераспознанный type возвращает invalid-command и не вызывает Cache API. Запустить `rtk proxy pnpm exec vitest run tests/bridge/page-context.test.ts tests/bridge/expressions.test.ts tests/diagnostics/page-runner.test.ts`; убедиться, что новые assertions падают до изменения реализации.
-- [ ] Реализовать context внутри self-contained factory. Dispose хранит `closed=true`; следующий createPageContext заменяет закрытый instance. Очистка регистраций и пользовательских cleanup callbacks; не выполнять произвольные pending actions при lifecycle events.
-- [ ] Добавить context в production expressions/overview и switch по командам с явным unknown-result. `page-context` возвращает текущую identity синхронно внутри job результата; никаких сетевых запросов. Обновить fixtures typed Overview и export: page identity НЕ добавлять автоматически в публичный report.
-- [ ] Повторить указанную команду: все выбранные тесты PASS. Проверить existing overview/cache/preview tests; не менять старые data limits.
+- [x] Написать `same_document_reuses_identity_but_fresh_realm_does_not`: два вызова одного registry в том же документе дают один documentId; новый документ по тому же URL даёт другой; другой Inspector key изолирован.
+- [x] Написать `pagehide_disposes_once_and_bfcache_does_not_restore_handles`: dispose callback вызывается один раз, registries пусты, старый expectedPage не принимается после pageshow. Поменять только hash/path → isCurrent(old) false.
+- [x] Написать `unknown_command_does_not_run_check_urls`: любой нераспознанный type возвращает invalid-command и не вызывает Cache API. Запустить `rtk proxy pnpm exec vitest run tests/bridge/page-context.test.ts tests/bridge/expressions.test.ts tests/diagnostics/page-runner.test.ts`; убедиться, что новые assertions падают до изменения реализации.
+- [x] Реализовать context внутри self-contained factory. Dispose хранит `closed=true`; следующий createPageContext заменяет закрытый instance. Очистка регистраций и пользовательских cleanup callbacks; не выполнять произвольные pending actions при lifecycle events.
+- [x] Добавить context в production expressions/overview и switch по командам с явным unknown-result. `page-context` возвращает текущую identity синхронно внутри job результата; никаких сетевых запросов. Обновить fixtures typed Overview и export: page identity НЕ добавлять автоматически в публичный report.
+- [x] Повторить указанную команду: все выбранные тесты PASS. Проверить existing overview/cache/preview tests; не менять старые data limits.
 
 ## A2 — Prepare/commit и ограниченный ledger
 

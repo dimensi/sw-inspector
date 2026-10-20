@@ -1,6 +1,8 @@
-import type { DiagnosticCommand } from '../domain/types';
+import type { InspectorCommand } from '../domain/commands';
+import { createPageContext } from './page-context';
 import { createPageRunner } from '../diagnostics/page-runner';
 
+const contextRegistryKey = `__swInspectorContext_${crypto.randomUUID()}`;
 const snapshotRegistryKey = `__swInspectorSnapshots_${crypto.randomUUID()}`;
 const jobRegistryKey = `__swInspectorJobs_${crypto.randomUUID()}`;
 
@@ -13,14 +15,14 @@ function serialize(value: unknown): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
-export function createJobStartExpression(command: DiagnosticCommand, jobId: string): string {
+export function createJobStartExpression(command: InspectorCommand, jobId: string): string {
   return `(function () {
     const jobsKey = ${serialize(jobRegistryKey)};
     const jobs = globalThis[jobsKey] instanceof Map ? globalThis[jobsKey] : (globalThis[jobsKey] = new Map());
     const id = ${serialize(jobId)};
     const record = { state: 'pending' };
     jobs.set(id, record);
-    Promise.resolve().then(() => (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)})(${serialize(command)})).then(
+    Promise.resolve().then(() => (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)}, (${createPageContext.toString()})(${serialize(contextRegistryKey)}))(${serialize(command)})).then(
       (result) => { record.state = 'complete'; record.result = result; },
       (error) => { record.state = 'failed'; record.error = error instanceof Error ? error.message : String(error); },
     );

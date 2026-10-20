@@ -6,6 +6,7 @@ export type DiagnosticCommand =
   | { type: 'check-urls'; paths: string[] };
 
 export type DiagnosticErrorCode =
+  | 'invalid-command'
   | 'aborted'
   | 'cache-not-found'
   | 'evaluation-failed'
@@ -31,7 +32,10 @@ export type StorageEstimate = { usageBytes: number | null; quotaBytes: number | 
 
 export type CacheSummary = { name: string; entries: number; partial: boolean };
 
+export type PageIdentity = { documentId: string; origin: string; url: string };
+
 export type Overview = {
+  page: PageIdentity;
   origin: string;
   registrations: Registration[];
   controller: WorkerState | null;

@@ -1,9 +1,10 @@
+import { createPageContext, type PageContext } from '../bridge/page-context';
+import type { InspectorCommand } from '../domain/commands';
 import type {
   CacheDetails,
   CacheEntry,
   CacheInventory,
   CacheMeasurement,
-  DiagnosticCommand,
   OfflineCheck,
   Overview,
   Registration,
@@ -11,7 +12,7 @@ import type {
   WorkerState,
 } from '../domain/types';
 
-export function createPageRunner(snapshotRegistryKey = '__swInspectorSnapshotsV1') {
+export function createPageRunner(snapshotRegistryKey = '__swInspectorSnapshotsV1', context?: PageContext) {
 const MAX_ENTRIES = 1_500;
 const MAX_PREVIEW_BYTES = 48 * 1024;
 const SNAPSHOT_TTL_MS = 5 * 60 * 1_000;
@@ -37,6 +38,12 @@ function registry(): Map<string, SnapshotRecord> {
   }
   const created = new Map<string, SnapshotRecord>();
   (globalThis as Record<string, unknown>)[snapshotRegistryKey] = created;
+  context?.onDispose(() => {
+    created.clear();
+    if ((globalThis as Record<string, unknown>)[snapshotRegistryKey] === created) {
+      delete (globalThis as Record<string, unknown>)[snapshotRegistryKey];
+    }
+  });
   return created;
 }
 
@@ -81,6 +88,7 @@ async function boundedText(response: Response, full: boolean): Promise<CacheDeta
 }
 
 async function overview(): Promise<Result<Overview>> {
+  if (!context) return { ok: false, error: { code: 'invalid-command', message: 'Page context is required for overview' } };
   const warnings: string[] = [];
   const registrations: Registration[] = [];
   let controller: WorkerState | null = null;
@@ -132,19 +140,23 @@ async function overview(): Promise<Result<Overview>> {
     warnings.push(`Storage estimate: ${message(error)}`);
   }
 
-  return { ok: true, value: { origin: location.origin, registrations, controller, caches: cacheSummaries, storage, warnings } };
+  return { ok: true, value: { page: context.identity(), origin: location.origin, registrations, controller, caches: cacheSummaries, storage, warnings } };
 }
 
 async function listCacheKeys(cacheName: string): Promise<Result<CacheInventory>> {
+  const expectedPage = context?.identity();
   try {
     const cache = await openExistingCache(cacheName);
     const requests = await cache.keys();
+    if (context && expectedPage && !context.isCurrent(expectedPage)) {
+      return { ok: false, error: { code: 'stale-result', message: 'The inspected page changed before this inventory returned' } };
+    }
     const snapshotId = crypto.randomUUID();
     const visibleRequests = requests.slice(0, MAX_ENTRIES);
     const snapshots = registry();
     while (snapshots.size >= MAX_SNAPSHOTS) snapshots.delete(snapshots.keys().next().value!);
     snapshots.set(snapshotId, { cacheName, requests: visibleRequests, expiresAt: Date.now() + SNAPSHOT_TTL_MS });
-    setTimeout(() => registry().delete(snapshotId), SNAPSHOT_TTL_MS);
+    setTimeout(() => snapshots.delete(snapshotId), SNAPSHOT_TTL_MS);
     const entries: CacheEntry[] = visibleRequests.map((request, index) => ({
       requestKey: `${snapshotId}:${index}`,
       url: request.url,
@@ -247,13 +259,21 @@ async function checkUrls(paths: string[]): Promise<Result<OfflineCheck[]>> {
   return { ok: true, value: checks };
 }
 
-return async function executeDiagnostic(command: DiagnosticCommand): Promise<Result<unknown>> {
-  if (command.type === 'overview') return overview();
-  if (command.type === 'list-cache-keys') return listCacheKeys(command.cacheName);
-  if (command.type === 'get-response-details') return details(command.cacheName, command.requestKey, command.preview === true, command.fullPreview === true);
-  if (command.type === 'measure-cache') return measureCache(command.cacheName);
-  return checkUrls(command.paths);
+return async function run(command: InspectorCommand): Promise<Result<unknown>> {
+  switch (command.type) {
+    case 'page-context': return context
+      ? { ok: true, value: context.identity() }
+      : { ok: false, error: { code: 'invalid-command', message: 'Page context is required for page-context' } };
+    case 'overview': return overview();
+    case 'list-cache-keys': return listCacheKeys(command.cacheName);
+    case 'get-response-details': return details(command.cacheName, command.requestKey, command.preview === true, command.fullPreview === true);
+    case 'measure-cache': return measureCache(command.cacheName);
+    case 'check-urls': return checkUrls(command.paths);
+    default: return { ok: false, error: { code: 'invalid-command', message: 'Unknown inspector command' } };
+  }
 }
 }
 
-export const executeDiagnostic = createPageRunner();
+export function executeDiagnostic(command: InspectorCommand): Promise<Result<unknown>> {
+  return createPageRunner(undefined, createPageContext('__swInspectorDirectContextV1'))(command);
+}

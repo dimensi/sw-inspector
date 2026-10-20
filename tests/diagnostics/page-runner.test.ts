@@ -1,6 +1,7 @@
+import { createPageContext } from '../../src/bridge/page-context';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { executeDiagnostic } from '../../src/diagnostics/page-runner';
-import type { CacheDetails, CacheInventory, OfflineCheck, Overview, Result } from '../../src/domain/types';
+import { createPageRunner, executeDiagnostic } from '../../src/diagnostics/page-runner';
+import type { DiagnosticCommand, CacheDetails, CacheInventory, OfflineCheck, Overview, Result } from '../../src/domain/types';
 
 type Stored = { request: Request; response: Response };
 
@@ -25,7 +26,9 @@ function installOrigin(entries: Record<string, Stored[]>, options: { registratio
       return [...caches.values()].flat().find((record) => record.request.url === url)?.response;
     }),
   };
-  vi.stubGlobal('location', { origin });
+  vi.stubGlobal('addEventListener', vi.fn());
+  vi.stubGlobal('removeEventListener', vi.fn());
+  vi.stubGlobal('location', { origin, href: `${origin}/` });
   vi.stubGlobal('caches', storage);
   vi.stubGlobal('navigator', {
     serviceWorker: {
@@ -45,6 +48,60 @@ function value<T>(result: Result<T>): T {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('page diagnostic runner', () => {
+  it('does not retain a late inventory after pagehide', async () => {
+    const { storage } = installOrigin({ runtime: [] });
+    const events = new EventTarget();
+    vi.stubGlobal('addEventListener', events.addEventListener.bind(events));
+    vi.stubGlobal('removeEventListener', events.removeEventListener.bind(events));
+    let resolveKeys!: (requests: Request[]) => void;
+    const keys = vi.fn(() => new Promise<Request[]>((resolve) => { resolveKeys = resolve; }));
+    storage.open.mockResolvedValue({ keys, match: async () => undefined });
+    const contextKey = `context-${crypto.randomUUID()}`;
+    const snapshotsKey = `snapshots-${crypto.randomUUID()}`;
+    const pending = createPageRunner(snapshotsKey, createPageContext(contextKey))({ type: 'list-cache-keys', cacheName: 'runtime' });
+    while (!keys.mock.calls.length) await Promise.resolve();
+    events.dispatchEvent(new Event('pagehide'));
+    resolveKeys([new Request('https://app.test/a')]);
+    await expect(pending).resolves.toMatchObject({ ok: false, error: { code: 'stale-result' } });
+    expect((globalThis as Record<string, unknown>)[snapshotsKey]).toBeUndefined();
+    delete (globalThis as Record<string, unknown>)[contextKey];
+  });
+
+  it('clears snapshots through repeated BFCache restores and pagehide', async () => {
+    installOrigin({ runtime: [{ request: new Request('https://app.test/a'), response: new Response('a') }] });
+    const events = new EventTarget();
+    vi.stubGlobal('addEventListener', events.addEventListener.bind(events));
+    vi.stubGlobal('removeEventListener', events.removeEventListener.bind(events));
+    const contextKey = `context-${crypto.randomUUID()}`;
+    const snapshotsKey = `snapshots-${crypto.randomUUID()}`;
+    for (let round = 0; round < 2; round += 1) {
+      const runner = createPageRunner(snapshotsKey, createPageContext(contextKey));
+      const inventory = value(await runner({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+      const snapshots = (globalThis as Record<string, unknown>)[snapshotsKey] as Map<string, unknown>;
+      expect(snapshots.size).toBe(1);
+      events.dispatchEvent(new Event('pagehide'));
+      expect(snapshots.size).toBe(0);
+      events.dispatchEvent(new Event('pageshow'));
+      const restoredRunner = createPageRunner(snapshotsKey, createPageContext(contextKey));
+      await expect(restoredRunner({ type: 'get-response-details', cacheName: 'runtime', requestKey: inventory.entries[0].requestKey })).resolves.toMatchObject({ ok: false, error: { code: 'stale-snapshot' } });
+    }
+    delete (globalThis as Record<string, unknown>)[contextKey];
+    delete (globalThis as Record<string, unknown>)[snapshotsKey];
+  });
+
+  it.each(['overview', 'page-context'] as const)('rejects %s without an injected context', async (type) => {
+    await expect(createPageRunner()({ type })).resolves.toMatchObject({
+      ok: false, error: { code: 'invalid-command', message: `Page context is required for ${type}` },
+    });
+  });
+
+  it('unknown_command_does_not_run_check_urls', async () => {
+    const { storage } = installOrigin({});
+    await expect(executeDiagnostic({ type: 'unknown', paths: ['/'] } as unknown as DiagnosticCommand)).resolves.toMatchObject({ ok: false, error: { code: 'invalid-command' } });
+    expect(storage.match).not.toHaveBeenCalled();
+    expect(storage.keys).not.toHaveBeenCalled();
+  });
+
   it('keeps an empty no-Service-Worker origin observable', async () => {
     installOrigin({});
     const overview = value<Overview>(await executeDiagnostic({ type: 'overview' }) as Result<Overview>);
