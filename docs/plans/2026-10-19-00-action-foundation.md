@@ -1,12 +1,14 @@
 # Action Foundation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Не коммить без указания пользователя; этот workspace уже содержит чужие staged/unstaged изменения.
+> **Completed implementation reference:** A1–A4 code-complete; не выдавать этот файл как новое активное задание. Контракты ниже сохраняются для зависимых feature plans; native acceptance ведётся в TESTING.
+>
+> **Historical execution workflow for agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Не коммить без указания пользователя; этот workspace уже содержит чужие staged/unstaged изменения.
 
 **Goal:** Создать проверяемую границу между чтением состояния и явным действием в конкретном inspected document.
 **Architecture:** Сохранить devtools-page relay/start-poll. Ввести page identity, одноразовый prepare/commit и локальный controller подтверждения. Page-side handlers добавляются последующими планами.
 **Tech Stack:** существующие TypeScript, Svelte 5, WXT, Vitest, Web APIs; без новой runtime dependency.
 **Spec:** [development design](2026-10-19-development-design.md), [ADR 0004, proposed](../adr/0004-explicit-development-actions.md).
-**Status:** Partial foundation, 2026-10-20: A1–A3 code-complete и прошли независимые code/design review; native Safari acceptance pending. A4 не реализован. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20), [проверки A2](../TESTING.md#a2-preparecommit-and-bounded-ledger--2026-10-20), [проверки A3](../TESTING.md#a3-control-serialization-and-uncertain-outcomes--2026-10-20).
+**Status:** Code-complete foundation, 2026-10-20: A1–A4 реализованы; native Safari acceptance pending. [A4 controller/confirmation evidence](../TESTING.md#a4-controller-and-confirmation--2026-10-20). Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20), [проверки A2](../TESTING.md#a2-preparecommit-and-bounded-ledger--2026-10-20), [проверки A3](../TESTING.md#a3-control-serialization-and-uncertain-outcomes--2026-10-20).
 
 ## Global Constraints
 
@@ -89,11 +91,12 @@ createActionController(deps: {
 
 `onState` присваивает новое значение `$state` в App; plain object controller сам не становится reactive. `ActionConfirmation` props: `ticket`, `busy`, `onconfirm`, `oncancel`; небольшой native dialog с полной summary. Контроллер — единственный владелец повторного клика/публикации результата; feature controls только вызывают `prepare`.
 
-- [ ] Тесты `cancel_never_commits`, `confirm_uses_frozen_ticket`, `double_confirm_is_one_invoke`, `reset_ignores_late_prepare`, `settled_refresh_failure_does_not_hide_receipt`. До overview.page prepare disabled; новая selection/Refresh/navigation → reset. reset не отменяет уже запущенную browser operation.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/ui/action-controller.test.ts`, затем минимально реализовать state machine. При unknown onSettled(null) перечитывает текущие данные только если всё ещё тот же document; ошибка refresh сохраняется отдельно от исхода действия.
-- [ ] Подключить controller/confirmation к App без доступных mutation кнопок до установки feature handler. Во время running нельзя Cancel/Stop с обещанием отмены; можно закрыть result после завершения. При known completion показать receipt и обновить затронутые данные, не перезагружать сайт автоматически.
-- [ ] Проверить UI fixture: Cancel initial focus, Escape только до commit, focus return, длинные URL, light/dark, 1280px/540px widths, keyboard. Вызвать официальный Svelte MCP для новых/изменённых компонентов и исправить замечания.
-- [ ] Выполнить общие code checks из design. В native Safari пока проверить только Refresh/context/relay и смену документа без effects; mutation acceptance выполняют feature plans.
+- [x] Тесты `cancel_never_commits`, `confirm_uses_frozen_ticket`, `double_confirm_is_one_invoke`, `reset_ignores_late_prepare`, `settled_refresh_failure_does_not_hide_receipt`. До overview.page prepare disabled; новая selection/Refresh/navigation → reset. reset не отменяет уже запущенную browser operation.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/ui/action-controller.test.ts`, затем минимально реализовать state machine. При unknown onSettled(null) перечитывает текущие данные только если всё ещё тот же document; ошибка refresh сохраняется отдельно от исхода действия.
+- [x] Подключить controller/confirmation к App без доступных mutation кнопок до установки feature handler. Во время running нельзя Cancel/Stop с обещанием отмены; можно закрыть result после завершения. При known completion показать receipt и обновить затронутые данные, не перезагружать сайт автоматически.
+- [x] Проверить UI fixture: Cancel initial focus, Escape только до commit, focus return, длинные URL, light/dark, 1280px/540px widths, keyboard. Вызвать официальный Svelte MCP для новых/изменённых компонентов и исправить замечания.
+- [x] Выполнить общие code checks из design.
+- [ ] Native Safari: проверить Refresh/context/relay и смену документа без effects; результат остаётся pending в TESTING. Mutation acceptance выполняют feature plans.
 
 ## Передача результата
 

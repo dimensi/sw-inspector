@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
+  import ActionConfirmation from './ActionConfirmation.svelte';
+  import { createActionController, type ActionState } from '../../src/ui/action-controller';
+  import type { PageIdentity } from '../../src/domain/types';
   import { browser } from 'wxt/browser';
   import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn, initializePanelActivation, requestPanelActivation, cancelPanelActivation } from '../../src/bridge/eval-window';
   import { describeDevToolsBinding, type DevToolsNamespace } from '../../src/bridge/runtime-binding';
@@ -45,6 +48,32 @@
     browser: (globalThis as { browser?: DevToolsNamespace }).browser,
     chrome: (globalThis as { chrome?: DevToolsNamespace }).chrome,
   });
+  let actionContextGeneration = 0;
+  let actionState = $state<ActionState>({ phase: 'idle', ticket: null, receipt: null, error: null });
+  const actions = createActionController({
+    invoke: command => transport.invoke(command),
+    getPage: () => overview?.page ?? null,
+    onState: state => { actionState = state; },
+    onSettled: async () => {
+      const expectedPage = overview?.page;
+      if (!expectedPage) return;
+      const navigation = navigationGeneration;
+      const actionContext = actionContextGeneration;
+      const context = await transport.invoke<PageIdentity>({ type: 'page-context' });
+      if (navigation !== navigationGeneration || actionContext !== actionContextGeneration) return;
+      if (!context.ok) { inspectionError = context.error.message; return; }
+      if (!samePage(context.value, expectedPage)) return;
+      await refresh(expectedPage);
+    },
+  });
+  function resetActions() { actionContextGeneration += 1; actions.reset(); }
+  function samePage(a: PageIdentity, b: PageIdentity) {
+    return a.documentId === b.documentId && a.origin === b.origin && a.url === b.url;
+  }
+  function chooseView(next: View) {
+    if (view !== next) resetActions();
+    view = next;
+  }
   let inspectionStatus = $derived(deriveInspectionStatus(overview, loading, inspectionError));
   let selectedMeasurement = $derived(selectedInventory ? measurements.find((item) => item.cacheName === selectedInventory?.cacheName) ?? null : null);
 
@@ -88,7 +117,8 @@
     await runProbeExpression('Deferred job poll', `(function () { const job = globalThis[${key}]; return JSON.stringify(job ?? { state: 'missing' }); })()`);
   }
 
-  async function refresh() {
+  async function refresh(expectedPage?: PageIdentity) {
+    if (!expectedPage) resetActions();
     navigationGeneration += 1;
     transport.invalidate();
     measurementController?.abort();
@@ -110,11 +140,15 @@
     const result = await transport.invoke<Overview>({ type: 'overview' });
     if (navigation !== navigationGeneration || operation !== refreshGeneration) return;
     loading = false;
-    if (result.ok) { overview = result.value; lastUpdated = new Date().toLocaleTimeString(); }
+    if (result.ok) {
+      if (expectedPage && !samePage(result.value.page, expectedPage)) return;
+      overview = result.value; lastUpdated = new Date().toLocaleTimeString();
+    }
     else inspectionError = result.error.message;
   }
 
   async function chooseCache(name: string) {
+    resetActions();
     view = 'cache';
     requestedCache = name;
     selectedInventory = null;
@@ -134,6 +168,7 @@
 
   async function showDetails(requestKey: string, preview = false, fullPreview = false) {
     if (!selectedInventory) return;
+    if (selectedRequestKey !== requestKey) resetActions();
     const navigation = navigationGeneration;
     const inventory = selectedInventory;
     const operation = ++detailsGeneration;
@@ -216,6 +251,7 @@
     window.addEventListener('focus', onFocus);
     window.addEventListener('blur', onBlur);
     const onNavigated = () => {
+      resetActions();
       navigationGeneration += 1;
       transport.invalidate();
       measurementController?.abort();
@@ -234,6 +270,7 @@
     const unsubscribeReturn = subscribePanelReturn(() => { void refresh(); });
     void refresh();
     return () => {
+      resetActions();
       cancelPanelActivation();
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', onFocus);
@@ -248,8 +285,22 @@
 </script>
 
 <main class="inspector">
+{#if actionState.ticket && (actionState.phase === 'confirming' || actionState.phase === 'running')}
+  <ActionConfirmation ticket={actionState.ticket} busy={actionState.phase === 'running'} onconfirm={() => { void actions.confirm(); }} oncancel={actions.cancel} />
+{/if}
+
+
+  {#if actionState.phase === 'result'}
+    <section class="action-result" aria-label="Action result" aria-live="polite">
+      {#if actionState.receipt}
+        <strong>{actionState.receipt.status === 'partial' ? 'Action partially completed' : 'Action completed'}</strong>
+        <ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {item.outcome}{item.message ? ` — ${item.message}` : ''}</li>{/each}</ul>
+      {:else}<p>{actionState.error}</p>{/if}
+      <button onclick={actions.cancel}>Dismiss</button>
+    </section>
+  {/if}
   <header class="toolbar">
-    <button class="tool-button" onclick={refresh} disabled={loading} title="Read a fresh snapshot of the inspected page"><Icon name="refresh" /><span>{loading ? 'Refreshing…' : 'Refresh'}</span></button>
+    <button class="tool-button" onclick={() => { void refresh(); }} disabled={loading} title="Read a fresh snapshot of the inspected page"><Icon name="refresh" /><span>{loading ? 'Refreshing…' : 'Refresh'}</span></button>
     <button class="tool-button" onclick={downloadReport} disabled={!overview} title="Export diagnostic metadata as JSON"><Icon name="export" /><span>Export</span></button>
     <span class="toolbar-divider"></span>
     <span class="origin" title={overview?.origin ?? 'Origin is available after inspection'}>{overview?.origin ?? 'No inspected origin'}</span>
@@ -258,11 +309,11 @@
 
   <div class="compact-navigation">
     <label for="section-select">View</label>
-    <select id="section-select" value={view === 'cache' ? 'caches' : view} onchange={(event) => { view = event.currentTarget.value as View; }}>
+    <select id="section-select" value={view === 'cache' ? 'caches' : view} onchange={(event) => { chooseView(event.currentTarget.value as View); }}>
       <option value="workers">Service Workers</option><option value="caches">Cache Storage</option><option value="offline">Offline Resources</option><option value="diagnostics">Diagnostics</option>
     </select>
     {#if view === 'cache' || view === 'caches'}
-      <select aria-label="Cache namespace" value={view === 'cache' ? requestedCache : ''} onchange={(event) => { const name = event.currentTarget.value; if (name) void chooseCache(name); else view = 'caches'; }}>
+      <select aria-label="Cache namespace" value={view === 'cache' ? requestedCache : ''} onchange={(event) => { const name = event.currentTarget.value; if (name) void chooseCache(name); else chooseView('caches'); }}>
         <option value="">All caches</option>{#each overview?.caches ?? [] as cache (cache.name)}<option value={cache.name}>{cache.name}</option>{/each}
       </select>
     {/if}
@@ -271,19 +322,19 @@
   <div class="workspace">
     <nav class="sidebar" aria-label="Inspection views">
       <div class="navigation-items">
-        <button class="navigation-row" class:current={view === 'workers'} aria-current={view === 'workers' ? 'page' : undefined} onclick={() => { view = 'workers'; }}><Icon name="worker" /><span>Service Workers</span><span class="count">{overview?.registrations.length ?? '—'}</span></button>
+        <button class="navigation-row" class:current={view === 'workers'} aria-current={view === 'workers' ? 'page' : undefined} onclick={() => { chooseView('workers'); }}><Icon name="worker" /><span>Service Workers</span><span class="count">{overview?.registrations.length ?? '—'}</span></button>
         <div class="cache-navigation">
           <button class="disclosure" aria-label={cachesOpen ? 'Collapse cache namespaces' : 'Expand cache namespaces'} aria-expanded={cachesOpen} onclick={() => { cachesOpen = !cachesOpen; }}><span class:expanded={cachesOpen}><Icon name="chevron" size={10} /></span></button>
-          <button class="navigation-row cache-heading" class:current={view === 'caches'} aria-current={view === 'caches' ? 'page' : undefined} onclick={() => { view = 'caches'; cachesOpen = true; }}><Icon name="database" /><span>Cache Storage</span><span class="count">{overview?.caches.length ?? '—'}</span></button>
+          <button class="navigation-row cache-heading" class:current={view === 'caches'} aria-current={view === 'caches' ? 'page' : undefined} onclick={() => { chooseView('caches'); cachesOpen = true; }}><Icon name="database" /><span>Cache Storage</span><span class="count">{overview?.caches.length ?? '—'}</span></button>
         </div>
         {#if cachesOpen}
           {#each overview?.caches ?? [] as cache (cache.name)}
             <button class="navigation-row cache-child" class:current={view === 'cache' && requestedCache === cache.name} aria-current={view === 'cache' && requestedCache === cache.name ? 'page' : undefined} title={cache.name} onclick={() => chooseCache(cache.name)} disabled={working === `cache:${cache.name}`}><Icon name="database" size={12} /><span>{cache.name}</span><span class="count">{cache.entries}{cache.partial ? '+' : ''}</span></button>
           {:else}<span class="tree-empty">{overview ? 'No caches' : 'Not inspected'}</span>{/each}
         {/if}
-        <button class="navigation-row" class:current={view === 'offline'} aria-current={view === 'offline' ? 'page' : undefined} onclick={() => { view = 'offline'; }}><Icon name="check" /><span>Offline Resources</span></button>
+        <button class="navigation-row" class:current={view === 'offline'} aria-current={view === 'offline' ? 'page' : undefined} onclick={() => { chooseView('offline'); }}><Icon name="check" /><span>Offline Resources</span></button>
       </div>
-      <button class="navigation-row diagnostic-navigation" class:current={view === 'diagnostics'} aria-current={view === 'diagnostics' ? 'page' : undefined} onclick={() => { view = 'diagnostics'; }}><Icon name="diagnostics" /><span>Diagnostics</span></button>
+      <button class="navigation-row diagnostic-navigation" class:current={view === 'diagnostics'} aria-current={view === 'diagnostics' ? 'page' : undefined} onclick={() => { chooseView('diagnostics'); }}><Icon name="diagnostics" /><span>Diagnostics</span></button>
     </nav>
 
     <section class="content" aria-label="Inspection content" aria-busy={loading}>
@@ -392,6 +443,8 @@
 </main>
 
 <style>
+  .action-result { flex-shrink: 0; max-height: 35dvh; overflow: auto; padding: 7px 10px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+  .action-result p, .action-result ul { margin: 0 0 6px; }
   :global(*) { box-sizing: border-box; }
   :global(html) { color-scheme: light dark; }
   :global(body) { margin: 0; font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }

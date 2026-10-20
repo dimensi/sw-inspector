@@ -19,7 +19,7 @@ The suite covers relay/session routing, expression escaping, timeouts/stale resu
 
 ## A1 document identity and routing — 2026-10-20
 
-00/A1 is code-complete and passed independent code and design reviews. It adds document identity and exhaustive command routing inside the existing relay; A2–A3 are now code-complete (see below); A4 and action handlers/UI remain unimplemented. The read-only scope and Proposed status of ADR 0004 are unchanged. No UI source, copy, or tokens changed, so a visual sweep was not applicable.
+00/A1 is code-complete and passed independent code and design reviews. It adds document identity and exhaustive command routing inside the existing relay; A2–A3 are now code-complete (see below); A4 is now code-complete (see below); feature action handlers/UI remain unimplemented. The read-only scope and Proposed status of ADR 0004 are unchanged. No UI source, copy, or tokens changed, so a visual sweep was not applicable.
 
 Red/green evidence: before implementation, the new unknown-command assertion failed because the runner fell through to `checkUrls`, and the new context suite failed because its module did not exist. Tests now cover same-document identity reuse, fresh-realm and Inspector-key isolation, URL/hash invalidation, one-time pagehide disposal, new BFCache identity, context injection into overview/start-poll, explicit rejection without an injected context, and omission of page identity from the metadata report. Review found two additional lifecycle cases; each received a failing regression before its fix: a reused snapshot Map survived the second BFCache/pagehide cycle, and a pending inventory could retain Requests after pagehide. Both now pass, including rejection of the previous snapshot through the restored context.
 
@@ -66,6 +66,36 @@ Independent browser smoke of the final built panel and committed synthetic fixtu
 Final packaging verification: `pnpm sync:safari` passed with the same compiled panel hash above; manifest checks and the compiled-artifact proof passed again. Exact comparisons of Safari output with repository wrapper Resources and the signed application's embedded extension Resources both returned exit 0. The existing Debug Xcode scheme built successfully at the same `/tmp/sw-inspector-a1-signed` location using unchanged signing configuration. `codesign --verify --deep --strict` passed outside the sandbox with access to the local trust store. Xcode performed its standard LaunchServices registration at that existing path; no new application location, account, or certificate changes were introduced. The app and Safari were not launched.
 
 Native Safari control/relay acceptance was not performed for A3. A1 lifecycle acceptance and feature-specific action acceptance remain pending; no real mutation was tested and no new application location or extension registration was created. **Refresh after navigation remains necessary** for the recorded temporary-access case. No UI source or design tokens changed, so a full visual acceptance sweep was not applicable.
+
+## A4 controller and confirmation — 2026-10-20
+
+00/A4 adds one action controller and a mounted native confirmation dialog. `App.svelte` publishes fresh controller snapshots into `$state`; Refresh, navigation, disposal, and selection changes reset pending confirmation/results. Reset suppresses late UI publication and does not cancel an already submitted browser operation. The production handler map remains empty and no action trigger is exposed. The shipped panel remains read-only; ADR 0004 remains Proposed.
+
+Red/green evidence: the initial missing-module run failed, then a no-op controller produced 8 failing assertions and 2 passing cases. The implemented controller passes 11 tests covering cancel without commit, copied ticket/page despite source or published-state mutation, one invoke for double confirmation, late prepare after reset, receipt retention after failed settled refresh, reset during running without unlocking a second action, ignored Cancel during running, changed-page rejection/suppression, no-page prepare, and unknown settlement with a null receipt. A changed-page late completion also clears its obsolete running state.
+
+The settled reread first queries the actual `page-context`, including document ID, origin, and full URL. It rereads overview only for that same document, and checks the returned overview identity before publication. A selection/context generation rejects a settled context reply after a new selection. Inspection refresh errors remain separate from the action receipt or unknown-outcome message. No site reload or automatic commit retry is issued.
+
+The test-only fixture imports the production App, controller, and dialog; aliases replace only browser/bridge/transport dependencies and capture the controller outside production sources. Run from the repository root:
+
+```sh
+rtk proxy node .impeccable/preview/a4/server.mjs
+```
+
+Open `http://127.0.0.1:5194`, then use **Prepare fixture action**. The fixture has no real effects. `window.a4finish()` completes the held commit; `a4unknown`, `a4refreshError`, `a4page`, `a4holdContext`/`a4releaseContext()`, and `a4receiptItems` select bounded test scenarios. `a4calls` records commands; `a4navigate()`/`a4return()` simulate callbacks. These hooks live only under `.impeccable/preview/a4`, outside extension entrypoints and the shipped bundle. Stop the server after use. Existing installed Vite/Svelte dependencies are reused; no dependency was added.
+
+Independent browser acceptance passed light/dark at 1280px and 540px: Cancel receives initial focus, Escape cancels before commit, focus returns to the trigger, Tab/Shift+Tab stay in the busy dialog, busy Escape does not close or resubmit, full long URL/summary remain readable without document overflow, hostile URL text creates no HTML nodes, long receipts scroll locally, and Dismiss remains reachable. Mounted App checks passed selection/Refresh/navigation reset; a held settled context response after selection caused no reread; unknown outcome reread once for the same actual document and zero times for a different document; a known receipt remained visible alongside a refresh failure. Browser fixture evidence is synthetic, not native Safari mutation acceptance.
+
+Implementation verification: full `rtk proxy pnpm test` passed 130 tests in 18 files; the controller suite passed all 11. Official Svelte MCP autofixer reported no issues after fixes; its remaining suggestions concern existing class directives and optional ref patterns. The Impeccable detector returned `[]`. Independent final-candidate QA passed all 130 tests, `pnpm check` with 0 errors/0 warnings, Safari build, `sync:safari`, and manifest checks. A fresh-realm generated-bundle proof passed against `panel-D_uY-_yM.js` (SHA-256 `3396d8864ebe1030427896c7365cfa44847d0c00efde4904f13539d466bbad47`); manifest SHA-256 was `eba5ad630d52ba2a0fce4a367b938466ddf017ad43c21c003eb9cc5a76f65074`. Manual manifest review confirmed MV3, `devtools_page`, only `devtools`/`activeTab`, and no host patterns, background, or content scripts. The compiled baseline fixture verified initial overview count 1, return count 2, duplicate return still 2, manual Refresh count 3, zero automatic body reads, and successful synchronous/deferred probes.
+
+QA synchronized the wrapper resources and built the existing signed Debug scheme at `/tmp/sw-inspector-a1-signed` without launching it. `codesign --verify --deep --strict` passed; all 17 generated files matched the embedded extension resources byte for byte. This preparation does not prove that Safari reloaded the bundle. Fixture captures are retained at `/tmp/sw-inspector-a4-qa/dialog-{light,dark}-{1280,540,390}.png`, `/tmp/sw-inspector-a4-qa/long-result-dark-540.png`, and `/tmp/sw-inspector-a4-qa/compiled-baseline.png`. A separate mounted-App browser assertion supplied a partial receipt through the test-only fixture: the partial title and applied/failed/skipped targets rendered, the 103-item result scrolled locally (251px client height / 1863px scroll height), and the receipt persisted beside a failed refresh. Capture: `/tmp/sw-inspector-a4-qa/partial-result.png`. No feature-specific partial effect was executed.
+
+Pending native acceptance:
+
+- [ ] Record Safari/macOS versions, installation route, disposable origin, permission gesture, Refresh/context/relay result, and same-URL document change without effects.
+- [ ] Retain the A1 same-origin reload/SPA/BFCache/concurrent-Inspector cases; A4 synthetic results do not close them.
+- [ ] Test real mutation confirmation/outcomes only with the corresponding feature handler and feature plan. No mutation was exposed or executed by A4.
+
+**Refresh after navigation remains necessary** for the recorded temporary-access case.
 
 ## UI fixture and visual baseline
 
