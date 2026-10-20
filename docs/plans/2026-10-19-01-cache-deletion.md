@@ -6,7 +6,7 @@
 **Architecture:** Action foundation → retained target → стандартные Cache APIs. Cache Storage остаётся отдельным от HTTP cache, IndexedDB, cookies и localStorage.
 **Tech Stack:** текущие TypeScript/Svelte/WXT/Vitest, CacheStorage/Cache.
 **Spec:** [development design](2026-10-19-development-design.md), [00/A1–A4](2026-10-19-00-action-foundation.md).
-**Status:** C1 code-complete (2026-10-20), native Safari acceptance pending; C2/C3 and remaining C4 planned. Dependencies: все A1–A4.
+**Status:** C1 code-complete (2026-10-20), native Cancel/single-namespace deletion passed by user report (2026-10-21; [evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); remaining native checks, C2/C3 and remaining C4 planned. Dependencies: все A1–A4.
 
 ## Global Constraints
 
