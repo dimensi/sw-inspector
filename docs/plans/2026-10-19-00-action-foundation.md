@@ -6,7 +6,7 @@
 **Architecture:** Сохранить devtools-page relay/start-poll. Ввести page identity, одноразовый prepare/commit и локальный controller подтверждения. Page-side handlers добавляются последующими планами.
 **Tech Stack:** существующие TypeScript, Svelte 5, WXT, Vitest, Web APIs; без новой runtime dependency.
 **Spec:** [development design](2026-10-19-development-design.md), [ADR 0004, proposed](../adr/0004-explicit-development-actions.md).
-**Status:** Partial foundation, 2026-10-20: A1 code-complete и прошла независимые code/design review; native Safari acceptance pending. A2–A4 не реализованы. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20).
+**Status:** Partial foundation, 2026-10-20: A1 и A2 code-complete и прошли независимые code/design review; native Safari acceptance pending. A3–A4 не реализованы. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20), [проверки A2](../TESTING.md#a2-preparecommit-and-bounded-ledger--2026-10-20).
 
 ## Global Constraints
 
@@ -45,12 +45,12 @@
 
 **Interfaces:** contracts ActionIntent/ActionHandlers/Ticket/Receipt/ControlCommand из design. `createControlRunner(context:PageContext, handlers:ActionHandlers)` → `(command:ControlCommand)=>Promise<Result<ActionTicket|ActionReceipt>>`. Handler map пока пустой в production, fake handlers только в тестах. Внутренние action records typed в этом файле, не `any`.
 
-- [ ] Написать тесты `prepare_has_zero_effects`, `commit_executes_once`, `duplicate_pending_is_busy`, `duplicate_complete_returns_same_receipt`, `unsupported_kind_is_rejected`. Fake handler считает prepare/execute отдельно; повторный ticket не увеличивает execute count.
-- [ ] Написать `expired_or_changed_page_never_executes`: 30,000 ms TTL; несовпадающие documentId/origin/url; новый prepare отменяет старый ticket. `busy_lock_survives_ui_timeout`: пока Promise execute не settled, новый commit не запускается.
-- [ ] Написать `ledger_is_bounded_and_partial_is_not_success`: ≤100 completed records, TTL 300,000 ms; pending не вытесняется; failed/skipped item → partial. На лимите pending/records освобождать только completed/expired, иначе action-busy. Тест failure после первой цели сохраняет результат первой, не превращает весь batch в «ничего не сделано».
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/actions/page-runner.test.ts`, увидеть новые FAIL. Реализовать guards, intent validation, serial commit и receipt. Ticket помечается consumed/operation running до первого await commit. Summary приходит только от handler, выводится текстом; не исполняется и не интерполируется в code.
-- [ ] Передать handler callback `isCurrent()` с frozen ticket.page. Handler обязан проверить callback после каждого await перед следующим effect. Неожиданное исключение handler после dispatch не объявлять гарантированным отказом: error outcome-unknown, при необходимости сохранять известные items.
-- [ ] Повторить test command; PASS. Проверить fake clock cleanup и отсутствие timers после dispose. Не добавлять production test/no-op actions.
+- [x] Написать тесты `prepare_has_zero_effects`, `commit_executes_once`, `duplicate_pending_is_busy`, `duplicate_complete_returns_same_receipt`, `unsupported_kind_is_rejected`. Fake handler считает prepare/execute отдельно; повторный ticket не увеличивает execute count.
+- [x] Написать `expired_or_changed_page_never_executes`: 30,000 ms TTL; несовпадающие documentId/origin/url; новый prepare отменяет старый ticket. `busy_lock_survives_ui_timeout`: пока Promise execute не settled, новый commit не запускается.
+- [x] Написать `ledger_is_bounded_and_partial_is_not_success`: ≤100 completed records, TTL 300,000 ms; pending не вытесняется; failed/skipped item → partial. На лимите pending/records освобождать только completed/expired, иначе action-busy. Тест failure после первой цели сохраняет результат первой, не превращает весь batch в «ничего не сделано».
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/actions/page-runner.test.ts`, увидеть новые FAIL. Реализовать guards, intent validation, serial commit и receipt. Ticket помечается consumed/operation running до первого await commit. Summary приходит только от handler, выводится текстом; не исполняется и не интерполируется в code.
+- [x] Передать handler callback `isCurrent()` с frozen ticket.page. Handler обязан проверить callback после каждого await перед следующим effect. Неожиданное исключение handler после dispatch не объявлять гарантированным отказом: error outcome-unknown, при необходимости сохранять известные items.
+- [x] Повторить test command; PASS. Проверить fake clock cleanup и отсутствие timers после dispose. Не добавлять production test/no-op actions.
 
 ## A3 — Реальная сериализация и неизвестный исход
 

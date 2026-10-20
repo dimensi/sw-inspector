@@ -6,6 +6,11 @@ export type DiagnosticCommand =
   | { type: 'check-urls'; paths: string[] };
 
 export type DiagnosticErrorCode =
+  | 'stale-target'
+  | 'action-expired'
+  | 'action-busy'
+  | 'unsupported'
+  | 'outcome-unknown'
   | 'invalid-command'
   | 'aborted'
   | 'cache-not-found'
