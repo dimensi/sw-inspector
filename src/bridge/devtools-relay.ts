@@ -86,6 +86,33 @@ export function installDevtoolsRelay(runtime: RelayRuntime, devtools: Devtools, 
   };
 }
 
+type PanelEvent = {
+  addListener(listener: () => void): void;
+  removeListener(listener: () => void): void;
+};
+
+export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onShown: PanelEvent; onHidden: PanelEvent }, session: string): () => void {
+  let visible = false;
+  let opened = false;
+  let disposed = false;
+  const onShown = () => {
+    if (disposed || visible) return;
+    visible = true;
+    if (!opened) { opened = true; return; } // Mount owns the initial snapshot.
+    void Promise.resolve().then(() => {
+      if (!disposed) return runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session });
+    }).catch(() => { /* The panel may have closed. */ });
+  };
+  const onHidden = () => { visible = false; };
+  panel.onShown.addListener(onShown);
+  panel.onHidden.addListener(onHidden);
+  return () => {
+    disposed = true;
+    panel.onShown.removeListener(onShown);
+    panel.onHidden.removeListener(onHidden);
+  };
+}
+
 export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeoutMs = 15_000) {
   const session = new URL(panelUrl).searchParams.get('session');
 
@@ -109,10 +136,10 @@ export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeou
     }
   };
 
-  function subscribeNavigation(listener: () => void): () => void {
+  function subscribe(kind: string, listener: () => void): () => void {
     if (!session) return () => {};
     const onMessage: RelayMessageListener = (message, sender) => {
-      if (isRecord(message) && message.kind === 'sw-inspector/navigated' && message.session === session
+      if (isRecord(message) && message.kind === kind && message.session === session
         && matchesSender(runtime, sender, 'devtools.html')) listener();
       return undefined;
     };
@@ -120,5 +147,9 @@ export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeou
     return () => runtime.onMessage.removeListener(onMessage);
   }
 
-  return { evaluate, subscribeNavigation };
+  return {
+    evaluate,
+    subscribeNavigation: (listener: () => void) => subscribe('sw-inspector/navigated', listener),
+    subscribePanelReturn: (listener: () => void) => subscribe('sw-inspector/panel-returned', listener),
+  };
 }

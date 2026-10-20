@@ -35,7 +35,7 @@ describe('Safari DevTools entrypoint', () => {
   it('connects the relay before creating a panel with its own relative session URL', async () => {
     const order: string[] = [];
     extension.addMessage.mockImplementation(() => order.push('listener'));
-    extension.createPanel.mockImplementation(() => { order.push('panel'); return Promise.resolve(); });
+    extension.createPanel.mockImplementation(() => { order.push('panel'); return Promise.resolve({ onShown: { addListener: vi.fn(), removeListener: vi.fn() }, onHidden: { addListener: vi.fn(), removeListener: vi.fn() } }); });
     extension.nativeEval.mockResolvedValue([2, undefined]);
     vi.stubGlobal('crypto', { randomUUID: () => 'session-one' });
     const onPageEvent = vi.fn();
@@ -61,5 +61,20 @@ describe('Safari DevTools entrypoint', () => {
     dispose();
     expect(extension.removeMessage).toHaveBeenCalledWith(listener);
     expect(extension.removeNavigation).toHaveBeenCalledWith(extension.addNavigation.mock.calls[0][0]);
+  });
+
+  it('does not attach panel listeners if creation finishes after pagehide', async () => {
+    let resolve!: (panel: unknown) => void;
+    extension.createPanel.mockImplementation(() => new Promise(done => { resolve = done; }));
+    const onPageEvent = vi.fn();
+    vi.stubGlobal('addEventListener', onPageEvent);
+    await import('../../entrypoints/devtools/main');
+    onPageEvent.mock.calls[0][1]();
+    const onShown = { addListener: vi.fn(), removeListener: vi.fn() };
+    const onHidden = { addListener: vi.fn(), removeListener: vi.fn() };
+    resolve({ onShown, onHidden });
+    await Promise.resolve();
+    expect(onShown.addListener).not.toHaveBeenCalled();
+    expect(onHidden.addListener).not.toHaveBeenCalled();
   });
 });

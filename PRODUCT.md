@@ -16,7 +16,7 @@ SW Inspector is a read-only diagnostic panel. It answers what is registered, wha
 
 ## Operating Context
 
-The panel lives beside Safari's Storage and Network tools and must remain useful in a narrow dock. The inspected origin is its context; **Refresh** explicitly reads a new snapshot. Chrome is useful for development, but does not substitute for Safari runtime verification.
+The panel lives beside Safari's Storage and Network tools and must remain useful in a narrow dock. The inspected origin is its context. The panel automatically reads one snapshot when first opened and when returning to its actual Web Inspector tab. **Refresh** remains available for an explicit snapshot, including after navigation. Automatic snapshots never read response bodies. Chrome is useful for development, but does not substitute for Safari runtime verification.
 
 ## Capabilities and Constraints
 

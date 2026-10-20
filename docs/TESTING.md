@@ -57,14 +57,28 @@ Added a regression test that reads metadata and previews for the first entry, th
 
 Build Safari, then run `python3 .impeccable/preview/server.py` and open `http://127.0.0.1:4186/preview.html?session=preview`. Stop the server after use. The fixture provides synthetic in-memory browser data and exercises the built panel; it is not included in the extension bundle and does not inspect a real website.
 
-Inspect both themes, wide and narrow dock widths, long values, empty/error/partial states, keyboard selection, local filtering, explicit preview, measurement, and duplicate offline inputs. Verify no automatic eval on initial mount and no document-wide horizontal overflow. Preserve [DESIGN.md](../DESIGN.md).
+Inspect both themes, wide and narrow dock widths, long values, empty/error/partial states, keyboard selection, local filtering, explicit preview, measurement, and duplicate offline inputs. Verify exactly one initial overview, no refresh on hide or sidebar view changes, one fresh overview on actual panel return, and a working manual retry after an inspection failure. Keep body reads explicit and verify no document-wide horizontal overflow. Preserve [DESIGN.md](../DESIGN.md).
 
-Recorded on 2026-10-19: wide light and compact dark layouts, manual refresh/cache inventory, filter, arrow-key selection, preview retaining selection, measurement, duplicate/missing offline paths, permission error, and zero initial eval calls passed in the synthetic fixture. These checks do not replace the native matrix below.
+Historical baseline before the approved automatic snapshot change, recorded on 2026-10-19: wide light and compact dark layouts, manual refresh/cache inventory, filter, arrow-key selection, preview retaining selection, measurement, duplicate/missing offline paths, permission error, and zero initial eval calls passed in the synthetic fixture. These checks do not replace the native matrix below.
 
 - [Worker properties, 1440×900 light](../.impeccable/review/desktop.png)
 - [Cache and response, 1440×900 light](../.impeccable/review/cache.png)
 - [Compact dock, 390×844 dark](../.impeccable/review/mobile.png)
 - [Dated verification record](../.impeccable/review/result.json)
+
+## Automatic initial and panel-return snapshots — 2026-10-20
+
+The panel now reads one overview on mount and after a real hidden-to-shown return to the SW Inspector DevTools tab. The devtools entrypoint owns native `onShown`/`onHidden` listeners; the first show and duplicate show events do not add snapshots. Returns use the existing authenticated session relay. Manual Refresh remains available, response-body reads remain explicit, and sidebar view changes do not trigger a snapshot. Every refresh invalidates earlier pending overview and secondary results and clears stale snapshot data; disposal removes subscriptions.
+
+Red/green evidence: the new lifecycle regression failed before implementation because its relay helper did not exist, then passed. Lifecycle tests cover first/duplicate show, hide, return, session isolation, forged senders, listener cleanup, queued notification disposal, and panel creation resolving after devtools disposal. All 87 tests in 17 files, `check` (0 errors/0 warnings), `build:safari`, and `check:manifest` passed. Generated manifest inspection confirmed MV3, `devtools_page`, only `devtools`/`activeTab`, no host permissions, background, or content scripts. The official Svelte autofixer reported no issues; its unrelated suggestions concern existing class directives.
+
+Independent built-panel browser QA confirmed exactly one initial overview and two subscriptions, no refresh from sidebar changes, and no automatic body preview when selecting response metadata. Arrow-key request navigation worked. Wrong-session and wrong-sender return messages caused no refresh; an authenticated return caused exactly one overview. A denied return cleared the old snapshot and displayed the inspection error, then manual Refresh recovered. A cache-list request held across a return to an empty overview was released afterward and did not restore stale requests or caches. Empty caches and no controller rendered correctly.
+
+Light and dark fixtures at 1440px and 390px widths had no document overflow; wide light and narrow dark screenshots were visually inspected. The only console error was a favicon 404. Six screenshots are retained in `/tmp/sw-inspector-panel-refresh-qa`; the independent fixture server and browser session were stopped. These checks use synthetic data and authenticated message simulation, not native DevTools tab switching.
+
+Independent verification also passed all 87 tests in 17 files, `check` (0 errors/0 warnings), Safari build, and manifest checks. `sync:safari` produced an exact generated-resource match. A signed Xcode build succeeded using the existing `/tmp/sw-inspector-a1-signed` build location; all embedded generated files matched the current Safari output. The build performed its standard LaunchServices registration at that same path; no new app location was created and the app was not manually launched.
+
+Native Safari first-open and actual tab-return behavior, denied-access/manual retry, and cleanup acceptance for this change remain pending. Automatic open/return reads do not close the recorded navigation-event limitation: keep **Refresh after navigation** when necessary under temporary access.
 
 ## Oversized preview cancellation — 2026-10-20
 

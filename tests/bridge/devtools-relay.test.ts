@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createPanelRelay, installDevtoolsRelay, type RelayRuntime, type RelayMessageListener } from '../../src/bridge/devtools-relay';
+import { createPanelRelay, installDevtoolsRelay, installPanelVisibilityRelay, type RelayRuntime, type RelayMessageListener } from '../../src/bridge/devtools-relay';
 
 const extension = vi.hoisted(() => ({
   nativeEval: vi.fn(),
@@ -224,4 +224,65 @@ describe('devtools relay', () => {
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
   });
+});
+
+
+describe('panel visibility relay', () => {
+  it('refreshes only on a real return, isolates sessions and cleans up', async () => {
+    const endpoint = messageBus();
+    const devtools = endpoint('devtools.html');
+    const panel = endpoint('panel.html?session=one');
+    const other = endpoint('panel.html?session=two');
+    const onShown = event<() => void>();
+    const onHidden = event<() => void>();
+    const dispose = installPanelVisibilityRelay(devtools.runtime, { onShown, onHidden }, 'one');
+    const refresh = vi.fn();
+    const otherRefresh = vi.fn();
+    const unsubscribe = createPanelRelay(panel.runtime, panel.url).subscribePanelReturn(refresh);
+    const unsubscribeOther = createPanelRelay(other.runtime, other.url).subscribePanelReturn(otherRefresh);
+    const show = () => { for (const listener of onShown.listeners) listener(); };
+    const hide = () => { for (const listener of onHidden.listeners) listener(); };
+    show(); show(); hide();
+    await Promise.resolve();
+    expect(refresh).not.toHaveBeenCalled();
+    show(); show();
+    await Promise.resolve();
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(otherRefresh).not.toHaveBeenCalled();
+    await panel.runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session: 'two' });
+    expect(otherRefresh).not.toHaveBeenCalled();
+    unsubscribe(); unsubscribeOther(); dispose();
+    hide(); show();
+    await Promise.resolve();
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(onShown.listeners.size).toBe(0);
+    expect(onHidden.listeners.size).toBe(0);
+    expect(panel.messages.listeners.size).toBe(0);
+  });
+});
+
+
+it('rejects forged return notifications and cancels queued notifications on disposal', async () => {
+  const endpoint = messageBus();
+  const devtools = endpoint('devtools.html');
+  const panel = endpoint('panel.html?session=one');
+  const refresh = vi.fn();
+  const unsubscribe = createPanelRelay(panel.runtime, panel.url).subscribePanelReturn(refresh);
+  const [listener] = panel.messages.listeners;
+  for (const sender of [
+    { id: 'wrong', url: devtools.url },
+    { id: 'extension-id', url: panel.url },
+    { id: 'extension-id', url: 'https://extension-id/devtools.html' },
+  ]) listener({ kind: 'sw-inspector/panel-returned', session: 'one' }, sender, () => {});
+  expect(refresh).not.toHaveBeenCalled();
+  const onShown = event<() => void>();
+  const onHidden = event<() => void>();
+  const dispose = installPanelVisibilityRelay(devtools.runtime, { onShown, onHidden }, 'one');
+  for (const handler of onShown.listeners) handler();
+  for (const handler of onHidden.listeners) handler();
+  for (const handler of onShown.listeners) handler();
+  dispose();
+  await Promise.resolve();
+  expect(refresh).not.toHaveBeenCalled();
+  unsubscribe();
 });

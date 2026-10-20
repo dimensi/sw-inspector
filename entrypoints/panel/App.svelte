@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
   import { browser } from 'wxt/browser';
-  import { evaluateInspectedWindow, subscribeInspectedNavigation } from '../../src/bridge/eval-window';
+  import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn } from '../../src/bridge/eval-window';
   import { describeDevToolsBinding, type DevToolsNamespace } from '../../src/bridge/runtime-binding';
   import { createTransport } from '../../src/bridge/transport';
   import { formatBytes, formatStoragePercentage } from '../../src/domain/format';
@@ -89,6 +89,15 @@
   }
 
   async function refresh() {
+    navigationGeneration += 1;
+    transport.invalidate();
+    measurementController?.abort();
+    measurementController = null;
+    working = '';
+    overview = null;
+    lastUpdated = null;
+    measurements = [];
+    offlineChecks = [];
     const navigation = navigationGeneration;
     const operation = ++refreshGeneration;
     loading = true;
@@ -168,8 +177,10 @@
   async function checkOffline() {
     working = 'offline';
     operationError = null;
+    const navigation = navigationGeneration;
     const paths = offlinePaths.split('\n').map((path) => path.trim()).filter(Boolean).slice(0, 30);
     const result = await transport.invoke<OfflineCheck[]>({ type: 'check-urls', paths });
+    if (navigation !== navigationGeneration) return;
     working = '';
     if (result.ok) offlineChecks = result.value;
     else operationError = { area: 'offline', message: result.error.message };
@@ -206,7 +217,16 @@
       offlineChecks = [];
       void refresh();
     };
-    return subscribeInspectedNavigation(onNavigated);
+    const unsubscribeNavigation = subscribeInspectedNavigation(onNavigated);
+    const unsubscribeReturn = subscribePanelReturn(() => { void refresh(); });
+    void refresh();
+    return () => {
+      unsubscribeNavigation();
+      unsubscribeReturn();
+      navigationGeneration += 1;
+      transport.invalidate();
+      measurementController?.abort();
+    };
   });
 </script>
 
