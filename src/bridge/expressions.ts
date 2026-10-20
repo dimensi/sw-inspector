@@ -1,4 +1,5 @@
 import type { InspectorCommand } from '../domain/commands';
+import { createControlRunner } from '../actions/page-runner';
 import { createPageContext } from './page-context';
 import { createPageRunner } from '../diagnostics/page-runner';
 
@@ -22,7 +23,14 @@ export function createJobStartExpression(command: InspectorCommand, jobId: strin
     const id = ${serialize(jobId)};
     const record = { state: 'pending' };
     jobs.set(id, record);
-    Promise.resolve().then(() => (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)}, (${createPageContext.toString()})(${serialize(contextRegistryKey)}))(${serialize(command)})).then(
+    Promise.resolve().then(() => {
+      const context = (${createPageContext.toString()})(${serialize(contextRegistryKey)});
+      const command = ${serialize(command)};
+      const handlers = {};
+      return command.type === 'prepare-action' || command.type === 'commit-action'
+        ? (${createControlRunner.toString()})(context, handlers)(command)
+        : (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)}, context)(command);
+    }).then(
       (result) => { record.state = 'complete'; record.result = result; },
       (error) => { record.state = 'failed'; record.error = error instanceof Error ? error.message : String(error); },
     );
@@ -40,4 +48,8 @@ export function createJobPollExpression(jobId: string): string {
     jobs.delete(${serialize(jobId)});
     return JSON.stringify(job);
   })()`;
+}
+
+export function createPageIdentityExpression(): string {
+  return `JSON.stringify((${createPageContext.toString()})(${serialize(contextRegistryKey)}).identity())`;
 }

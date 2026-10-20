@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import { createTransport, type EvalFn } from '../../src/bridge/transport';
 
@@ -103,4 +104,111 @@ describe('diagnostic transport', () => {
     expect(evaluate).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
+});
+
+const page = { documentId: 'document', origin: 'https://example.test', url: 'https://example.test/' };
+const commit = { type: 'commit-action', expectedPage: page, ticketId: 'ticket' } as const;
+const receipt = { ok: true, value: { operationId: 'operation', kind: 'delete-cache', status: 'completed', items: [{ target: 'cache', outcome: 'applied' }] } };
+const unknown = { ok: false, error: { code: 'outcome-unknown', message: 'The action may have completed. Refresh to inspect the current state.' } };
+
+describe('control transport outcomes', () => {
+  it.each(['lost ack', 'evaluation exception', 'malformed ack', 'failed poll', 'missing poll', 'malformed receipt', 'malformed error'])('commit %s is unknown without resubmission', async (scenario) => {
+    const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob);
+    if (scenario === 'lost ack') evaluate.mockReset().mockRejectedValueOnce(new Error('disconnected'));
+    else if (scenario === 'evaluation exception') evaluate.mockReset().mockResolvedValueOnce([undefined, { isException: true }]);
+    else if (scenario === 'malformed ack') evaluate.mockReset().mockResolvedValueOnce(['{}', undefined]);
+    else if (scenario === 'failed poll') evaluate.mockResolvedValueOnce([JSON.stringify({ state: 'failed', error: 'failed' }), undefined]);
+    else if (scenario === 'missing poll') evaluate.mockResolvedValueOnce([JSON.stringify({ state: 'missing' }), undefined]);
+    else if (scenario === 'malformed receipt') evaluate.mockResolvedValueOnce(completed({ ok: true, value: { ...receipt.value, items: [{ target: 'cache', outcome: 'invented' }] } }));
+    else evaluate.mockResolvedValueOnce(completed({ ok: false, error: { code: 'action-expired', message: 42 } }));
+    await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke(commit)).resolves.toEqual(unknown);
+    expect(evaluate.mock.calls.filter(([source]) => source.includes('const id = '))).toHaveLength(1);
+  });
+
+  it('commit timeout after start is unknown but prepare timeout is ordinary', async () => {
+    vi.useFakeTimers();
+    try {
+      for (const command of [commit, { type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-all-caches' } } as const]) {
+        const evaluate = vi.fn().mockImplementation(() => new Promise(() => {}));
+        const pending = createTransport(evaluate, { timeoutMs: 20 }).invoke(command);
+        await vi.advanceTimersByTimeAsync(20);
+        expect(await pending).toMatchObject({ ok: false, error: { code: command.type === 'commit-action' ? 'outcome-unknown' : 'timeout' } });
+        expect(evaluate).toHaveBeenCalledTimes(1);
+      }
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('pre-aborted commit does not evaluate; abort after submission is unknown', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const evaluate = vi.fn().mockImplementation(() => new Promise(() => {}));
+    const transport = createTransport(evaluate);
+    await expect(transport.invoke(commit, { signal: controller.signal })).resolves.toMatchObject({ error: { code: 'aborted' } });
+    expect(evaluate).not.toHaveBeenCalled();
+    const active = new AbortController();
+    const pending = transport.invoke(commit, { signal: active.signal });
+    await vi.waitFor(() => expect(evaluate).toHaveBeenCalledTimes(1));
+    active.abort();
+    await expect(pending).resolves.toEqual(unknown);
+  });
+
+  it.each(['stale-target', 'action-expired', 'action-busy', 'invalid-command', 'unsupported', 'cache-not-found'])('preserves validated pre-effect %s rejection', async (code) => {
+    const rejection = { ok: false, error: { code, message: 'Rejected before effect' } };
+    const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob).mockResolvedValueOnce(completed(rejection));
+    await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke(commit)).resolves.toEqual(rejection);
+  });
+
+  it('validates receipts and suppresses completed receipt after page invalidation', async () => {
+    const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob).mockResolvedValueOnce(completed(receipt)).mockResolvedValueOnce([JSON.stringify(page), undefined]);
+    await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke(commit)).resolves.toEqual(receipt);
+    const changed = vi.fn().mockImplementationOnce(acknowledgedJob).mockImplementationOnce(async () => {
+      transport.invalidate();
+      return completed(receipt);
+    });
+    const transport = createTransport(changed, { pollIntervalMs: 0 });
+    await expect(transport.invoke(commit)).resolves.toEqual(unknown);
+    expect(changed).toHaveBeenCalledTimes(2);
+  });
+});
+
+it('suppresses a receipt after same-URL reload without a navigation notification', async () => {
+  const createRealm = () => {
+    const events = new EventTarget();
+    return { crypto, navigator: {}, location: { origin: page.origin, href: page.url }, setTimeout: () => 0,
+      addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0 };
+  };
+  const original = createRealm();
+  let realm = original;
+  let starts = 0;
+  const evaluate: EvalFn = async source => {
+    if (source.includes('const id = ')) starts++;
+    // Only this test installs a fixture at the expression boundary.
+    const fixture = `const handlers = { 'delete-all-caches': { prepare: async () => ({ summary: [], retained: null }), execute: async () => { globalThis.effects++; return []; } } };`;
+    const raw = runInNewContext(source.replace('const handlers = {};', fixture), realm);
+    const reply = JSON.parse(raw);
+    if (reply.state === 'complete' && reply.result?.value?.status === 'completed') realm = createRealm();
+    return [raw, undefined];
+  };
+  const transport = createTransport(evaluate, { pollIntervalMs: 0, getOrigin: () => page.origin });
+  const identity = await transport.invoke<typeof page>({ type: 'page-context' });
+  if (!identity.ok) throw new Error('Missing fixture identity');
+  const prepared = await transport.invoke<{ ticketId: string }>({ type: 'prepare-action', expectedPage: identity.value, intent: { kind: 'delete-all-caches' } });
+  if (!prepared.ok) throw new Error('Missing fixture ticket');
+  await expect(transport.invoke({ type: 'commit-action', expectedPage: identity.value, ticketId: prepared.value.ticketId })).resolves.toEqual(unknown);
+  expect(original.effects).toBe(1);
+  expect(realm.effects).toBe(0);
+  expect(starts).toBe(3); // context, prepare, commit; no retry or new ticket.
+});
+
+it('rejects malformed prepare tickets and preserves a typed prepare failure', async () => {
+  for (const result of [
+    { ok: true, value: { ticketId: 'ticket', operationId: 'operation', kind: 'delete-all-caches', expiresAt: 42, page: { ...page, documentId: 'other' }, summary: [] } },
+    { ok: false, error: { code: ['unsupported'], message: 'invalid code' } },
+  ]) {
+    const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob).mockResolvedValueOnce(completed(result));
+    await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke({ type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-all-caches' } })).resolves.toMatchObject({ error: { code: 'malformed-result' } });
+  }
+  const result = { ok: false, error: { code: 'evaluation-failed', message: 'Unable to prepare this action' } };
+  const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob).mockResolvedValueOnce(completed(result));
+  await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke({ type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-all-caches' } })).resolves.toEqual(result);
 });

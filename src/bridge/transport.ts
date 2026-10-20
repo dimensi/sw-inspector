@@ -1,5 +1,5 @@
 import type { InspectorCommand } from '../domain/commands';
-import { createJobPollExpression, createJobStartExpression } from './expressions';
+import { createJobPollExpression, createJobStartExpression, createPageIdentityExpression } from './expressions';
 import type { DiagnosticErrorCode, Result } from '../domain/types';
 
 export type EvalException = {
@@ -37,6 +37,32 @@ function isResult(value: unknown): value is Result<unknown> {
   if (!value || typeof value !== 'object' || !('ok' in value)) return false;
   if (value.ok === true) return 'value' in value;
   return value.ok === false && 'error' in value;
+}
+
+const actionKinds = ['delete-cache', 'delete-all-caches', 'delete-cache-entry', 'update-worker', 'unregister-worker', 'send-worker-message'];
+const safeRejections = ['stale-target', 'action-expired', 'action-busy', 'invalid-command', 'unsupported', 'cache-not-found'];
+function object(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function pageMatches(value: unknown, expected: { documentId: string; origin: string; url: string }): boolean {
+  return object(value) && value.documentId === expected.documentId && value.origin === expected.origin && value.url === expected.url;
+}
+function validControlResult(value: unknown, command: InspectorCommand): value is Result<unknown> {
+  if (!object(value)) return false;
+  if (value.ok === false) return object(value.error) && typeof value.error.message === 'string'
+    && typeof value.error.code === 'string' && [...safeRejections, 'outcome-unknown', ...(command.type === 'prepare-action' ? ['evaluation-failed'] : [])].includes(value.error.code);
+  if (value.ok !== true || !object(value.value)) return false;
+  const item = value.value;
+  if (typeof item.operationId !== 'string' || typeof item.kind !== 'string' || !actionKinds.includes(item.kind)) return false;
+  if (command.type === 'prepare-action') return typeof item.ticketId === 'string'
+    && typeof item.expiresAt === 'number' && Number.isFinite(item.expiresAt)
+    && item.kind === command.intent.kind && pageMatches(item.page, command.expectedPage)
+    && Array.isArray(item.summary) && item.summary.every(line => typeof line === 'string');
+  return (item.status === 'completed' || item.status === 'partial') && Array.isArray(item.items)
+    && item.items.every(entry => object(entry) && typeof entry.target === 'string'
+      && typeof entry.outcome === 'string' && ['applied', 'absent', 'failed', 'skipped'].includes(entry.outcome)
+      && (entry.message === undefined || typeof entry.message === 'string'))
+    && (item.status === 'partial') === item.items.some(entry => entry.outcome === 'failed' || entry.outcome === 'skipped');
 }
 
 function exceptionMessage(exception: EvalException): string {
@@ -91,33 +117,53 @@ export function createTransport(evaluate: EvalFn, options: TransportOptions = {}
         return remaining;
       };
 
+      let commitAttempted = false;
+      const uncertain = () => failure('outcome-unknown', 'The action may have completed. Refresh to inspect the current state.') as Result<T>;
+      const failed = (code: DiagnosticErrorCode, message: string) => commitAttempted ? uncertain() : failure(code, message) as Result<T>;
       try {
         const requestOrigin = await waitFor(Promise.resolve().then(getOrigin), invokeOptions.signal, remainingMs());
         const jobId = crypto.randomUUID();
-        const started = await evaluateJson(createJobStartExpression(command, jobId), invokeOptions.signal, remainingMs);
+        const source = createJobStartExpression(command, jobId);
+        if (invokeOptions.signal?.aborted) throw new Error('aborted');
+        const startTimeout = remainingMs();
+        commitAttempted = command.type === 'commit-action';
+        const [rawStart, startException] = await waitFor(evaluate(source), invokeOptions.signal, startTimeout);
+        if (startException?.isException || startException?.isError) throw new Error(exceptionMessage(startException));
+        const started = jsonReply(rawStart);
         if (!started || typeof started !== 'object' || (started as { jobId?: unknown }).jobId !== jobId) {
-          return failure('malformed-result', 'Inspected page did not acknowledge the diagnostic job') as Result<T>;
+          return failed('malformed-result', 'Inspected page did not acknowledge the diagnostic job');
         }
 
         let reply: JobReply;
         do {
           if (pollIntervalMs > 0) await delay(Math.min(pollIntervalMs, remainingMs()), invokeOptions.signal);
           reply = await evaluateJson(createJobPollExpression(jobId), invokeOptions.signal, remainingMs) as JobReply;
-        } while (reply.state === 'pending');
+        } while (reply?.state === 'pending');
 
-        if (reply.state === 'missing') return failure('stale-result', 'The inspected-page diagnostic job expired') as Result<T>;
-        if (reply.state === 'failed') return failure('evaluation-failed', reply.error) as Result<T>;
+        if (reply?.state === 'missing') return failed('stale-result', 'The inspected-page diagnostic job expired');
+        if (reply?.state === 'failed') return failed('evaluation-failed', reply.error);
+        if (reply?.state !== 'complete') return failed('malformed-result', 'Inspected page returned an invalid job reply');
 
         const currentOrigin = await waitFor(Promise.resolve().then(getOrigin), invokeOptions.signal, remainingMs());
         if (requestGeneration !== generation || requestOrigin !== currentOrigin) {
-          return failure('stale-result', 'The inspected page changed before this result returned') as Result<T>;
+          return failed('stale-result', 'The inspected page changed before this result returned');
         }
-        if (!isResult(reply.result)) return failure('malformed-result', 'Inspected page returned an invalid diagnostic result') as Result<T>;
+        const control = command.type === 'prepare-action' || command.type === 'commit-action';
+        if (!(control ? validControlResult(reply.result, command) : isResult(reply.result))) {
+          return failed('malformed-result', 'Inspected page returned an invalid diagnostic result');
+        }
+        if (control && isResult(reply.result) && reply.result.ok) {
+          const currentPage = await evaluateJson(createPageIdentityExpression(), invokeOptions.signal, remainingMs);
+          if (!pageMatches(currentPage, command.expectedPage) || requestGeneration !== generation) {
+            return failed('stale-result', 'The inspected document changed before this result returned');
+          }
+        }
+        if (control && isResult(reply.result) && !reply.result.ok && reply.result.error.code === 'outcome-unknown') return uncertain();
         return reply.result as Result<T>;
       } catch (error) {
-        if (error instanceof Error && error.message === 'aborted') return failure('aborted', 'Inspection was cancelled') as Result<T>;
-        if (error instanceof Error && error.message === 'timeout') return failure('timeout', 'Inspected-page operation timed out') as Result<T>;
-        return failure('evaluation-failed', error instanceof Error ? error.message : String(error)) as Result<T>;
+        if (error instanceof Error && error.message === 'aborted') return failed('aborted', 'Inspection was cancelled');
+        if (error instanceof Error && error.message === 'timeout') return failed('timeout', 'Inspected-page operation timed out');
+        return failed('evaluation-failed', error instanceof Error ? error.message : String(error));
       }
     },
   };

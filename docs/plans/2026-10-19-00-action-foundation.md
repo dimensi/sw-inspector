@@ -6,7 +6,7 @@
 **Architecture:** Сохранить devtools-page relay/start-poll. Ввести page identity, одноразовый prepare/commit и локальный controller подтверждения. Page-side handlers добавляются последующими планами.
 **Tech Stack:** существующие TypeScript, Svelte 5, WXT, Vitest, Web APIs; без новой runtime dependency.
 **Spec:** [development design](2026-10-19-development-design.md), [ADR 0004, proposed](../adr/0004-explicit-development-actions.md).
-**Status:** Partial foundation, 2026-10-20: A1 и A2 code-complete и прошли независимые code/design review; native Safari acceptance pending. A3–A4 не реализованы. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20), [проверки A2](../TESTING.md#a2-preparecommit-and-bounded-ledger--2026-10-20).
+**Status:** Partial foundation, 2026-10-20: A1–A3 code-complete и прошли независимые code/design review; native Safari acceptance pending. A4 не реализован. Текущая поставка остаётся read-only; [проверки A1](../TESTING.md#a1-document-identity-and-routing--2026-10-20), [проверки A2](../TESTING.md#a2-preparecommit-and-bounded-ledger--2026-10-20), [проверки A3](../TESTING.md#a3-control-serialization-and-uncertain-outcomes--2026-10-20).
 
 ## Global Constraints
 
@@ -58,12 +58,12 @@
 
 **Interfaces:** `createJobStartExpression(command:InspectorCommand,jobId:string):string`; `transport.invoke<T>(command:InspectorCommand,options?)` остаётся. Control runner получает map явно сериализованных factory results; ordinary diagnostics/manifest/messages идут в свои factories. No generic eval command on wire.
 
-- [ ] Тест `serializes_control_dependencies_into_fresh_realm`: evaluated start/poll без импортированного module scope работает с fixture handler; строка `</script>`/U+2028/U+2029 остаётся данными. Реальные domain handlers позже покрываются собственными integration tests, production test handler не нужен.
-- [ ] Тесты `commit_timeout_after_start_is_unknown`, `commit_lost_ack_is_unknown`, `commit_malformed_reply_is_unknown`, `commit_failed_poll_is_unknown`: start мог исполниться даже если ack не пришёл; один start, ноль retries. Pre-aborted invoke делает ноль eval и возвращает aborted. Prepare timeout остаётся обычным timeout, поскольку effect не запускался.
-- [ ] Тест `valid_pre_effect_rejection_is_preserved`: receipt/error schema проверяется до публикации, page-side stale-target/action-expired не подменяется успехом. Смена документа после completed action подавляет публикацию в новом document и сообщает unknown на старой operation; не запускает rollback.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/bridge/expressions.test.ts tests/bridge/transport.test.ts`, убедиться в FAIL новых случаев; реализовать классификацию commitAttempted непосредственно перед отправкой start expression (не после ack).
-- [ ] Проверить generated JS bundle после `rtk proxy pnpm build:safari`: factories не ссылаются на отсутствующие minified imports. Прогнать start/poll в fresh realm из собранного bundle в fixture; исходный TS unit тест сам по себе не доказывает сохранение `.toString()` зависимостей.
-- [ ] Повторить тесты до PASS; оставить native relay tests без ослабления sender/session/URL checks.
+- [x] Тест `serializes_control_dependencies_into_fresh_realm`: evaluated start/poll без импортированного module scope работает с fixture handler; строка `</script>`/U+2028/U+2029 остаётся данными. Реальные domain handlers позже покрываются собственными integration tests, production test handler не нужен.
+- [x] Тесты `commit_timeout_after_start_is_unknown`, `commit_lost_ack_is_unknown`, `commit_malformed_reply_is_unknown`, `commit_failed_poll_is_unknown`: start мог исполниться даже если ack не пришёл; один start, ноль retries. Pre-aborted invoke делает ноль eval и возвращает aborted. Prepare timeout остаётся обычным timeout, поскольку effect не запускался.
+- [x] Тест `valid_pre_effect_rejection_is_preserved`: receipt/error schema проверяется до публикации, page-side stale-target/action-expired не подменяется успехом. Смена документа после completed action подавляет публикацию в новом document и сообщает unknown на старой operation; не запускает rollback.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/bridge/expressions.test.ts tests/bridge/transport.test.ts`, убедиться в FAIL новых случаев; реализовать классификацию commitAttempted непосредственно перед отправкой start expression (не после ack).
+- [x] Проверить generated JS bundle после `rtk proxy pnpm build:safari`: factories не ссылаются на отсутствующие minified imports. Прогнать start/poll в fresh realm из собранного bundle в fixture; исходный TS unit тест сам по себе не доказывает сохранение `.toString()` зависимостей.
+- [x] Повторить тесты до PASS; оставить native relay tests без ослабления sender/session/URL checks.
 
 ## A4 — Один controller и одно подтверждение
 

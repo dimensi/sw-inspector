@@ -1,6 +1,7 @@
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import { createJobPollExpression, createJobStartExpression } from '../../src/bridge/expressions';
+import type { InspectorCommand } from '../../src/domain/commands';
 import type { DiagnosticCommand } from '../../src/domain/types';
 
 describe('DevTools expressions', () => {
@@ -53,4 +54,32 @@ describe('DevTools expressions', () => {
     expect(createJobPollExpression('job-1')).toContain('job-1');
     vi.unstubAllGlobals();
   });
+});
+
+it('serializes control dependencies into a fresh realm and keeps hostile strings as data', async () => {
+  const events = new EventTarget();
+  const realm = { crypto, navigator: {}, location: { origin: 'https://example.test', href: 'https://example.test/' },
+    setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0 };
+  let sequence = 0;
+  const fixture = `({ 'delete-cache': { prepare: async intent => ({ summary: [intent.cacheName], retained: intent.cacheName }), execute: async retained => { globalThis.effects++; return [{target: retained, outcome: 'applied'}]; } } })`;
+  async function run(command: InspectorCommand, withFixture = false) {
+    const id = `control-${++sequence}`;
+    const production = createJobStartExpression(command, id);
+    expect(production).not.toContain('globalThis.effects');
+    const source = withFixture ? production.replace('const handlers = {};', `const handlers = ${fixture};`) : production;
+    runInNewContext(source, realm);
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.parse(runInNewContext(createJobPollExpression(id), realm)).result;
+  }
+  const page = (await run({ type: 'page-context' })).value;
+  const hostile = '</script>\u2028\u2029';
+  const prepare = { type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-cache', cacheName: hostile } } as const;
+  expect(await run(prepare)).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  const ticket = (await run(prepare, true)).value;
+  expect(ticket.summary).toEqual([hostile]);
+  const commit = { type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId } as const;
+  const receipt = await run(commit, true);
+  expect(receipt).toMatchObject({ ok: true, value: { status: 'completed', items: [{ target: hostile, outcome: 'applied' }] } });
+  expect(await run(commit, true)).toEqual(receipt);
+  expect(realm.effects).toBe(1);
 });
