@@ -2,11 +2,12 @@
   import { onMount } from 'svelte';
   import type { ActionTicket } from '../../src/domain/actions';
 
-  let { ticket, busy, onconfirm, oncancel }: {
+  let { ticket, busy, onconfirm, oncancel, restoreFocus }: {
     ticket: ActionTicket;
     busy: boolean;
     onconfirm: () => void;
     oncancel: () => void;
+    restoreFocus?: () => void;
   } = $props();
   let dialog: HTMLDialogElement;
   let cancelButton: HTMLButtonElement;
@@ -20,7 +21,10 @@
     cancelButton.focus();
     return () => {
       dialog.close();
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+      queueMicrotask(() => {
+        if (restoreFocus) restoreFocus();
+        else if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+      });
     };
   });
 

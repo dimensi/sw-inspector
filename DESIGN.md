@@ -1,6 +1,6 @@
 ---
 name: SW Inspector
-description: Compact read-only inspection workspace for Safari Web Inspector
+description: Compact inspection workspace with explicit cache namespace deletion for Safari Web Inspector
 colors:
   background: "#fff"
   chrome: "#f2f2f2"
@@ -204,7 +204,7 @@ Numbers use tabular figures throughout the inspector. No letter-spacing or upper
 - Property lists use a 138px label column and a flexible value column with a 12px gap. Response properties use a 76px label column and an 8px gap.
 - Compact spacing is based on small control insets and 8–12px pane gutters. Section separation uses 16px; page-like outer margins are absent.
 
-At widths of 950px or less, the sidebar narrows to 174px and the response pane moves below the request list. The two areas use 55%/45% flex bases with minimum heights of 150px/120px. At widths of 600px or less, selects replace the sidebar; the top toolbar grows to a 35px minimum, property labels shrink to 108px, cache toolbar actions wrap, and the read-only label and snapshot time hide. Request tables continue to scroll rather than changing into cards.
+At widths of 950px or less, the sidebar narrows to 174px and the response pane moves below the request list. The two areas use 55%/45% flex bases with minimum heights of 150px/120px. At widths of 600px or less, selects replace the sidebar; the top toolbar grows to a 35px minimum, property labels shrink to 108px, cache toolbar actions wrap, and the inspection label and snapshot time hide. Request tables continue to scroll rather than changing into cards.
 
 ## Elevation & Depth
 

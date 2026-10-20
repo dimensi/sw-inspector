@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SW Inspector disposable controls fixture</title>
+<h1>Disposable Cache Storage fixture</h1>
+<p>Use only on a disposable localhost origin. All fixture cache names begin with <code>sw-inspector-fixture-</code>. Nothing runs automatically.</p>
+<button id="seed">Seed fixture</button> <button id="inspect">Inspect fixture caches</button> <button id="cleanup">Cleanup fixture</button>
+<pre id="result" role="status"></pre>
+<script type="module">
+const prefix = 'sw-inspector-fixture-';
+const result = document.querySelector('#result');
+async function inspect() {
+  const names = (await caches.keys()).filter(name => name.startsWith(prefix));
+  const rows = [];
+  for (const name of names) rows.push({ name, keys: (await (await caches.open(name)).keys()).length });
+  result.textContent = JSON.stringify(rows, null, 2);
+}
+function action(id, run) { document.querySelector(id).onclick = async () => { try { await run(); await inspect(); } catch (error) { result.textContent = String(error); } }; }
+action('#seed', async () => { for (const name of ['alpha', 'beta']) { const cache = await caches.open(prefix + name); await cache.put(new Request(location.origin + '/fixture-' + name), new Response('Fixture ' + name, { headers: { 'Content-Type': 'text/plain' } })); } });
+action('#inspect', async () => {});
+action('#cleanup', async () => { for (const name of await caches.keys()) if (name.startsWith(prefix)) await caches.delete(name); });
+</script></html>

@@ -6,7 +6,7 @@
 **Architecture:** Action foundation → retained target → стандартные Cache APIs. Cache Storage остаётся отдельным от HTTP cache, IndexedDB, cookies и localStorage.
 **Tech Stack:** текущие TypeScript/Svelte/WXT/Vitest, CacheStorage/Cache.
 **Spec:** [development design](2026-10-19-development-design.md), [00/A1–A4](2026-10-19-00-action-foundation.md).
-**Status:** Planned. Dependencies: все A1–A4.
+**Status:** C1 code-complete (2026-10-20), native Safari acceptance pending; C2/C3 and remaining C4 planned. Dependencies: все A1–A4.
 
 ## Global Constraints
 
@@ -31,10 +31,10 @@
 **Files:** create `src/cache/page-actions.ts`, `tests/cache/page-actions.test.ts`; modify `src/bridge/expressions.ts`, `entrypoints/panel/App.svelte`, `entrypoints/panel/Icon.svelte` если нужен текущий SVG vocabulary.
 **Interfaces:** `createCacheActions(context:PageContext,snapshotRegistryKey:string):ActionHandlers`; поддержать intent `{kind:'delete-cache',cacheName}`. `prepare` проверяет доступность API и текущее наличие, сохраняет имя. Summary: `Origin: …`, `Cache: …`, `Cached responses will be removed. The site may recreate this cache.`. Execute вызывает `caches.delete(name)` ровно один раз; true → applied, false → absent, rejection → failed.
 
-- [ ] Тесты `delete_namespace_never_opens_cache`, `absent_namespace_has_no_success_claim`, `delete_rejection_preserves_inspection`, `expired_ticket_makes_zero_delete_calls`. Счётчики open/fetch/update/unregister остаются 0.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/cache/page-actions.test.ts`, получить ожидаемые FAIL. Реализовать handler и явно включить factory в production expressions. В prepare отсутствующее имя возвращает cache-not-found; execute false после гонки возвращает absent.
-- [ ] В текущем cache toolbar добавить **Delete cache…**. Disabled без current overview.page/при running/пока кеш не выбран; всегда через общий controller. После known outcome перечитать overview; удалить inventory/details/measurement только затронутого имени, при удалённом кеше выбрать Cache Storage. При unknown показать общий текст и предложить Refresh.
-- [ ] Повторить targeted tests до PASS. Выполнить policy activation C4 до предоставления кнопки в релизе.
+- [x] Тесты `delete_namespace_never_opens_cache`, `absent_namespace_has_no_success_claim`, `delete_rejection_preserves_inspection`, `expired_ticket_makes_zero_delete_calls`. Счётчики open/fetch/update/unregister остаются 0.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/cache/page-actions.test.ts`, получить ожидаемые FAIL. Реализовать handler и явно включить factory в production expressions. В prepare отсутствующее имя возвращает cache-not-found; execute false после гонки возвращает absent.
+- [x] В текущем cache toolbar добавить **Delete cache…**. Disabled без current overview.page/при running/пока кеш не выбран; всегда через общий controller. После known outcome перечитать overview; удалить inventory/details/measurement только затронутого имени, при удалённом кеше выбрать Cache Storage. При unknown показать общий текст и предложить Refresh.
+- [x] Повторить targeted tests до PASS. Выполнить policy activation C4 до предоставления кнопки в релизе.
 
 ## C2 — Удаление фиксированного списка namespaces
 

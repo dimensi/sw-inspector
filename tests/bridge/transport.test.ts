@@ -174,17 +174,17 @@ describe('control transport outcomes', () => {
 it('suppresses a receipt after same-URL reload without a navigation notification', async () => {
   const createRealm = () => {
     const events = new EventTarget();
-    return { crypto, navigator: {}, location: { origin: page.origin, href: page.url }, setTimeout: () => 0,
-      addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0 };
+    const counters = { effects: 0 };
+    return Object.assign(counters, { crypto, navigator: {}, location: { origin: page.origin, href: page.url }, setTimeout: () => 0,
+      addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
+      caches: { keys: async () => ['cache'], delete: async () => { counters.effects++; return true; } } });
   };
   const original = createRealm();
   let realm = original;
   let starts = 0;
   const evaluate: EvalFn = async source => {
     if (source.includes('const id = ')) starts++;
-    // Only this test installs a fixture at the expression boundary.
-    const fixture = `const handlers = { 'delete-all-caches': { prepare: async () => ({ summary: [], retained: null }), execute: async () => { globalThis.effects++; return []; } } };`;
-    const raw = runInNewContext(source.replace('const handlers = {};', fixture), realm);
+    const raw = runInNewContext(source, realm);
     const reply = JSON.parse(raw);
     if (reply.state === 'complete' && reply.result?.value?.status === 'completed') realm = createRealm();
     return [raw, undefined];
@@ -192,7 +192,7 @@ it('suppresses a receipt after same-URL reload without a navigation notification
   const transport = createTransport(evaluate, { pollIntervalMs: 0, getOrigin: () => page.origin });
   const identity = await transport.invoke<typeof page>({ type: 'page-context' });
   if (!identity.ok) throw new Error('Missing fixture identity');
-  const prepared = await transport.invoke<{ ticketId: string }>({ type: 'prepare-action', expectedPage: identity.value, intent: { kind: 'delete-all-caches' } });
+  const prepared = await transport.invoke<{ ticketId: string }>({ type: 'prepare-action', expectedPage: identity.value, intent: { kind: 'delete-cache', cacheName: 'cache' } });
   if (!prepared.ok) throw new Error('Missing fixture ticket');
   await expect(transport.invoke({ type: 'commit-action', expectedPage: identity.value, ticketId: prepared.value.ticketId })).resolves.toEqual(unknown);
   expect(original.effects).toBe(1);

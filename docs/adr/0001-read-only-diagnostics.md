@@ -1,6 +1,6 @@
 # ADR 0001: Read-only, bounded diagnostics
 
-- Status: Accepted
+- Status: Accepted; blanket cache-delete prohibition partly superseded by [ADR 0004](0004-explicit-development-actions.md) for confirmed single namespace deletion only.
 - Date: 2026-10-19
 
 ## Context
@@ -10,7 +10,7 @@ SW Inspector diagnoses the inspected origin without changing its Service Worker 
 ## Decision
 
 - Read registrations with `getRegistrations()` and the current controller; never wait for `serviceWorker.ready` to display an empty state.
-- Do not call `fetch`, cache write/delete/add APIs, Service Worker update/unregister/skipWaiting, or Service Worker messaging APIs. No telemetry or network backend.
+- Except for explicit confirmed single namespace `CacheStorage.delete(name)` under ADR 0004, do not call `fetch`, cache write/delete/add APIs, Service Worker update/unregister/skipWaiting, or Service Worker messaging APIs. No telemetry or network backend.
 - Before `caches.open(name)`, check that the name is present in `caches.keys()`. Report a missing cache rather than intentionally creating it.
 - Inventory and response metadata are separate from body reads. Measure bodies and load previews only after explicit user actions.
 - Identify a cached request by an ephemeral inventory snapshot and index, retaining its original `Request`. A URL alone is not a unique request identity.

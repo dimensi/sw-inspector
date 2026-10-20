@@ -49,12 +49,19 @@
     chrome: (globalThis as { chrome?: DevToolsNamespace }).chrome,
   });
   let actionContextGeneration = 0;
+  let actionTrigger: HTMLButtonElement | null = null;
+  let refreshButton: HTMLButtonElement;
+  function restoreActionFocus() {
+    if (actionTrigger?.isConnected && !actionTrigger.disabled) actionTrigger.focus();
+    else refreshButton?.focus();
+  }
   let actionState = $state<ActionState>({ phase: 'idle', ticket: null, receipt: null, error: null });
   const actions = createActionController({
     invoke: command => transport.invoke(command),
     getPage: () => overview?.page ?? null,
     onState: state => { actionState = state; },
-    onSettled: async () => {
+    onSettled: async (receipt) => {
+      if (!receipt) return;
       const expectedPage = overview?.page;
       if (!expectedPage) return;
       const navigation = navigationGeneration;
@@ -63,7 +70,32 @@
       if (navigation !== navigationGeneration || actionContext !== actionContextGeneration) return;
       if (!context.ok) { inspectionError = context.error.message; return; }
       if (!samePage(context.value, expectedPage)) return;
-      await refresh(expectedPage);
+      const affected = new Set(receipt.items.filter(item => item.outcome === 'applied' || item.outcome === 'absent').map(item => item.target));
+      measurements = measurements.filter(item => !affected.has(item.cacheName));
+      if (selectedInventory && affected.has(selectedInventory.cacheName)) {
+        const restoreRemovedTrigger = document.activeElement === actionTrigger;
+        cacheSelectionGeneration += 1;
+        detailsGeneration += 1;
+        measurementController?.abort();
+        measurementController = null;
+        working = '';
+        selectedInventory = null;
+        selectedDetails = null;
+        selectedRequestKey = null;
+        view = 'caches';
+        queueMicrotask(() => {
+          if (restoreRemovedTrigger && document.activeElement === document.body
+            && navigation === navigationGeneration && actionContext === actionContextGeneration) refreshButton?.focus();
+        });
+      }
+      const operation = ++refreshGeneration;
+      const result = await transport.invoke<Overview>({ type: 'overview' });
+      if (navigation !== navigationGeneration || actionContext !== actionContextGeneration || operation !== refreshGeneration) return;
+      if (!result.ok) { inspectionError = result.error.message; return; }
+      if (!samePage(result.value.page, expectedPage)) return;
+      overview = result.value;
+      inspectionError = null;
+      lastUpdated = new Date().toLocaleTimeString();
     },
   });
   function resetActions() { actionContextGeneration += 1; actions.reset(); }
@@ -286,7 +318,7 @@
 
 <main class="inspector">
 {#if actionState.ticket && (actionState.phase === 'confirming' || actionState.phase === 'running')}
-  <ActionConfirmation ticket={actionState.ticket} busy={actionState.phase === 'running'} onconfirm={() => { void actions.confirm(); }} oncancel={actions.cancel} />
+  <ActionConfirmation ticket={actionState.ticket} busy={actionState.phase === 'running'} onconfirm={() => { void actions.confirm(); }} oncancel={actions.cancel} restoreFocus={restoreActionFocus} />
 {/if}
 
 
@@ -297,14 +329,15 @@
         <ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {item.outcome}{item.message ? ` — ${item.message}` : ''}</li>{/each}</ul>
       {:else}<p>{actionState.error}</p>{/if}
       <button onclick={actions.cancel}>Dismiss</button>
+      {#if !actionState.receipt}<button onclick={() => { void refresh(); }}>Refresh</button>{/if}
     </section>
   {/if}
   <header class="toolbar">
-    <button class="tool-button" onclick={() => { void refresh(); }} disabled={loading} title="Read a fresh snapshot of the inspected page"><Icon name="refresh" /><span>{loading ? 'Refreshing…' : 'Refresh'}</span></button>
+    <button bind:this={refreshButton} class="tool-button" onclick={() => { void refresh(); }} disabled={loading} title="Read a fresh snapshot of the inspected page"><Icon name="refresh" /><span>{loading ? 'Refreshing…' : 'Refresh'}</span></button>
     <button class="tool-button" onclick={downloadReport} disabled={!overview} title="Export diagnostic metadata as JSON"><Icon name="export" /><span>Export</span></button>
     <span class="toolbar-divider"></span>
     <span class="origin" title={overview?.origin ?? 'Origin is available after inspection'}>{overview?.origin ?? 'No inspected origin'}</span>
-    <span class="read-only">Read only</span>
+    <span class="inspection-mode">Inspect</span>
   </header>
 
   <div class="compact-navigation">
@@ -385,7 +418,7 @@
         </div>
 
       {:else if view === 'cache'}
-        <div class="pane-toolbar cache-toolbar"><h1 title={requestedCache}>{requestedCache}</h1><span class="secondary">{selectedInventory ? `${selectedInventory.totalEntries} keys` : 'Loading…'}</span><span class="toolbar-space"></span><button onclick={measure} disabled={!selectedInventory || working.startsWith('measure:')}>{working.startsWith('measure:') ? 'Measuring…' : 'Measure bodies'}</button>{#if working.startsWith('measure:')}<button onclick={stopMeasurement}>Stop updates</button>{/if}</div>
+        <div class="pane-toolbar cache-toolbar"><h1 title={requestedCache}>{requestedCache}</h1><span class="secondary">{selectedInventory ? `${selectedInventory.totalEntries} keys` : 'Loading…'}</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-cache', cacheName: requestedCache }); }} disabled={!overview?.page || !selectedInventory || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete cache…</button><button onclick={measure} disabled={!selectedInventory || working.startsWith('measure:')}>{working.startsWith('measure:') ? 'Measuring…' : 'Measure bodies'}</button>{#if working.startsWith('measure:')}<button onclick={stopMeasurement}>Stop updates</button>{/if}</div>
         {#if operationError?.area === 'cache' || operationError?.area === 'measure'}<p class="notice error" role="alert">{operationError.message}</p>{/if}
         {#if selectedInventory?.partial}<p class="notice warning">Partial inventory: first 1,500 keys shown.</p>{/if}
         <div class="cache-workspace">
@@ -479,7 +512,7 @@
   .tool-button { border-color: transparent; background: transparent; padding: 2px 6px; }
   .toolbar-divider { height: 16px; border-left: 1px solid var(--border); margin: 0 6px; }
   .origin { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--secondary); font-size: 11px; }
-  .read-only { margin-left: auto; padding-left: 10px; color: var(--secondary); font-size: 11px; white-space: nowrap; }
+  .inspection-mode { margin-left: auto; padding-left: 10px; color: var(--secondary); font-size: 11px; white-space: nowrap; }
   .workspace { display: flex; flex: 1; min-height: 0; }
   .sidebar { display: flex; flex-direction: column; flex: 0 0 196px; min-width: 0; overflow: auto; padding: 6px 0; border-right: 1px solid var(--border); background: var(--sidebar); }
   .navigation-items { flex: 1; }
@@ -585,7 +618,7 @@
     .compact-navigation { display: flex; align-items: center; gap: 8px; flex: none; min-height: 34px; padding: 4px 8px; border-bottom: 1px solid var(--border); background: var(--sidebar); }
     .compact-navigation label { color: var(--secondary); font-size: 11px; }
     .compact-navigation select { flex: 1; height: 26px; max-width: 100%; }
-    .read-only { display: none; }
+    .inspection-mode { display: none; }
     .toolbar { min-height: 35px; }
     .properties > div { grid-template-columns: 108px minmax(0, 1fr); gap: 8px; }
     .cache-toolbar { flex-wrap: wrap; gap: 5px 8px; }

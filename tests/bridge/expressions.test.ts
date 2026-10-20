@@ -59,27 +59,25 @@ describe('DevTools expressions', () => {
 it('serializes control dependencies into a fresh realm and keeps hostile strings as data', async () => {
   const events = new EventTarget();
   const realm = { crypto, navigator: {}, location: { origin: 'https://example.test', href: 'https://example.test/' },
-    setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0 };
+    setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0, caches: { keys: async () => ['</script>\u2028\u2029'], delete: async () => { realm.effects++; return true; } } };
   let sequence = 0;
-  const fixture = `({ 'delete-cache': { prepare: async intent => ({ summary: [intent.cacheName], retained: intent.cacheName }), execute: async retained => { globalThis.effects++; return [{target: retained, outcome: 'applied'}]; } } })`;
-  async function run(command: InspectorCommand, withFixture = false) {
+  async function run(command: InspectorCommand) {
     const id = `control-${++sequence}`;
     const production = createJobStartExpression(command, id);
     expect(production).not.toContain('globalThis.effects');
-    const source = withFixture ? production.replace('const handlers = {};', `const handlers = ${fixture};`) : production;
-    runInNewContext(source, realm);
+    runInNewContext(production, realm);
     await new Promise(resolve => setImmediate(resolve));
     return JSON.parse(runInNewContext(createJobPollExpression(id), realm)).result;
   }
   const page = (await run({ type: 'page-context' })).value;
   const hostile = '</script>\u2028\u2029';
   const prepare = { type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-cache', cacheName: hostile } } as const;
-  expect(await run(prepare)).toMatchObject({ ok: false, error: { code: 'unsupported' } });
-  const ticket = (await run(prepare, true)).value;
-  expect(ticket.summary).toEqual([hostile]);
+  expect(await run({ ...prepare, intent: { kind: 'delete-all-caches' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  const ticket = (await run(prepare)).value;
+  expect(ticket.summary).toEqual(['Origin: https://example.test', `Cache: ${hostile}`, 'Cached responses will be removed. The site may recreate this cache.']);
   const commit = { type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId } as const;
-  const receipt = await run(commit, true);
+  const receipt = await run(commit);
   expect(receipt).toMatchObject({ ok: true, value: { status: 'completed', items: [{ target: hostile, outcome: 'applied' }] } });
-  expect(await run(commit, true)).toEqual(receipt);
+  expect(await run(commit)).toEqual(receipt);
   expect(realm.effects).toBe(1);
 });

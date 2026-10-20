@@ -20,7 +20,7 @@ Read [PRODUCT.md](PRODUCT.md) for scope and [DESIGN.md](DESIGN.md) before changi
 - Preserve sender identity, extension URL, session validation, timeouts, and stale-result checks. Panel `tabId` is not the routing key.
 - Keep synchronous JSON start/poll for async page work. Awaiting the API call does not imply that Safari awaits an evaluated Promise.
 - Declare `devtools` and `activeTab`; create the panel unconditionally. Background workers, content scripts, or host patterns require a demonstrated need and an updated ADR.
-- Do not mutate worker lifecycle or cache contents, issue network probes, or transmit diagnostics. Temporary in-page job/snapshot state is allowed only for the bounded transport.
+- Do not mutate worker lifecycle, write cache contents, issue network probes, or transmit diagnostics. The sole mutation exception is explicit confirmed deletion of one selected cache namespace under ADR 0004; no batch or entry deletion. Temporary in-page job/snapshot state is allowed only for the bounded transport.
 - Keep request identity as snapshot/index plus the retained Request, not URL alone. Render preview as text, never HTML. Export only explicit metadata fields.
 - Never present unknown bytes as zero, origin usage as cache size, cache presence as offline success, or registration as control. Do not await `serviceWorker.ready`.
 - Keep inspection failures separate from cache/details/measurement/offline failures. Preserve selected-row identity when loading a preview and reject results from a superseded page/selection.

@@ -1,6 +1,6 @@
 # SW Inspector
 
-Read-only Service Worker and Cache Storage diagnostics inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, and a local JSON report.
+Service Worker and Cache Storage diagnostics with explicit confirmed namespace deletion inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, and a local JSON report.
 
 ## Support
 
@@ -45,7 +45,7 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 - Measured response-body bytes are not disk allocation. Storage usage/quota estimates cover the whole origin.
 - Preview and body measurement are explicit actions. Exports exclude response bodies and previews; review URLs before sharing.
 - With Safari 27.0 temporary `activeTab` access, navigation notifications were not delivered in the recorded run. Click **Refresh** after navigating.
-- No intentional website-data mutations, network probes, or telemetry are performed. The unavoidable `caches.keys()` / `caches.open()` race is documented in [ADR 0001](docs/adr/0001-read-only-diagnostics.md).
+- **Delete cache…** deletes only the selected Cache Storage namespace after confirmation. It does not clear HTTP cache, IndexedDB, cookies, or localStorage. The site may recreate the namespace; an unknown outcome requires Refresh, never an automatic retry. No worker lifecycle mutation, entry/batch deletion, network probes, or telemetry are performed. The unavoidable `caches.keys()` / `caches.open()` race is documented in [ADR 0001](docs/adr/0001-read-only-diagnostics.md).
 
 ## Project documents
 
@@ -54,7 +54,7 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 | [PRODUCT.md](PRODUCT.md) | Scope, users, and product boundaries |
 | [DESIGN.md](DESIGN.md) | Approved Safari-style visual system and extension rules |
 | [AGENTS.md](AGENTS.md) | Instructions for future implementation work |
-| [ADR 0001](docs/adr/0001-read-only-diagnostics.md) | Read-only diagnostics and data semantics |
+| [ADR 0001](docs/adr/0001-read-only-diagnostics.md) | Bounded diagnostics and data semantics |
 | [ADR 0002](docs/adr/0002-devtools-page-bridge.md) | Safari eval routing, transport, and permissions |
 | [ADR 0003](docs/adr/0003-inspector-design.md) | Safari Storage/Network design decision |
 | [TESTING.md](docs/TESTING.md) | Verification procedure, recorded evidence, and open Safari checks |
@@ -63,3 +63,7 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 | [App Store assets](marketing/app-store/README.md) | English screenshots, promotional mockups, and reproducible capture sources |
 
 The [standalone eval reproduction](diagnostics/safari-eval-repro/README.md) remains available for browser regressions. A passing build or synthetic UI preview is not native Safari acceptance.
+
+## Disposable controls fixture
+
+Use a separate disposable origin, `http://localhost:4174`, for deletion checks. From the repository run `rtk proxy python3 -m http.server 4174 --bind localhost --directory fixtures/controls-demo`, then open that origin. **Seed fixture** explicitly creates only `sw-inspector-fixture-*` caches from local text; **Cleanup fixture** deletes only that prefix. Neither runs automatically. **Inspect fixture caches** reads current names and key counts independently of the panel. No Service Worker is registered and no fetch is performed by the fixture. Native Safari acceptance is recorded in [TESTING.md](docs/TESTING.md).

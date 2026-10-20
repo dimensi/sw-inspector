@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Read-only Service Worker and Cache Storage diagnostics inside browser DevTools",
+  "description": "Service Worker and Cache Storage diagnostics with confirmed cache namespace deletion",
   "scripts": {
     "dev": "wxt -b chrome",
     "build": "pnpm build:safari",

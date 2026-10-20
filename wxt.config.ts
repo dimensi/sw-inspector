@@ -4,7 +4,7 @@ export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   manifest: ({ browser }) => ({
     name: 'SW Inspector',
-    description: 'Inspect Service Workers, Cache Storage, and offline readiness in Safari Web Inspector.',
+    description: 'Inspect Service Workers and Cache Storage; explicitly delete a confirmed cache namespace.',
     version: '0.1.1',
     permissions: ['devtools', 'activeTab'],
     icons: {
