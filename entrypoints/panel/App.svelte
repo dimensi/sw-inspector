@@ -326,6 +326,7 @@
     <section class="action-result" aria-label="Action result" aria-live="polite">
       {#if actionState.receipt}
         <strong>{actionState.receipt.status === 'partial' ? 'Action partially completed' : 'Action completed'}</strong>
+        {#if actionState.receipt.kind === 'delete-all-caches'}<p>{actionState.receipt.items.filter(item => item.outcome === 'applied').length} applied · {actionState.receipt.items.filter(item => item.outcome === 'absent').length} absent · {actionState.receipt.items.filter(item => item.outcome === 'failed').length} failed · {actionState.receipt.items.filter(item => item.outcome === 'skipped').length} skipped. The site may recreate caches.</p>{/if}
         <ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {item.outcome}{item.message ? ` — ${item.message}` : ''}</li>{/each}</ul>
       {:else}<p>{actionState.error}</p>{/if}
       <button onclick={actions.cancel}>Dismiss</button>
@@ -408,7 +409,7 @@
         </div>
 
       {:else if view === 'caches'}
-        <div class="pane-toolbar"><h1>Cache Storage</h1><span class="secondary">{overview?.caches.length ?? '—'} namespaces</span></div>
+        <div class="pane-toolbar cache-toolbar"><h1>Cache Storage</h1><span class="secondary">{overview?.caches.length ?? '—'} namespaces</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-all-caches' }); }} disabled={!overview?.page || !overview.caches.length || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete all caches…</button></div>
         {#if operationError?.area === 'cache'}<p class="notice error" role="alert">{operationError.message}</p>{/if}
         <div class="table-scroll">
           <table class="data-table cache-table"><thead><tr><th scope="col">Name</th><th scope="col" class="number-cell">Keys</th><th scope="col">Inventory</th></tr></thead><tbody>

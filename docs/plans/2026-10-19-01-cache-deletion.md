@@ -6,7 +6,7 @@
 **Architecture:** Action foundation → retained target → стандартные Cache APIs. Cache Storage остаётся отдельным от HTTP cache, IndexedDB, cookies и localStorage.
 **Tech Stack:** текущие TypeScript/Svelte/WXT/Vitest, CacheStorage/Cache.
 **Spec:** [development design](2026-10-19-development-design.md), [00/A1–A4](2026-10-19-00-action-foundation.md).
-**Status:** C1 code-complete (2026-10-20), native Cancel/single-namespace deletion passed by user report (2026-10-21; [evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); remaining native checks, C2/C3 and remaining C4 planned. Dependencies: все A1–A4.
+**Status:** C1 code-complete (2026-10-20), native Cancel/single-namespace deletion passed by user report (2026-10-21; [evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); C2 code-complete (2026-10-21), native C2 acceptance pending; next C3 and remaining C4 planned. Dependencies: все A1–A4.
 
 ## Global Constraints
 
@@ -23,7 +23,7 @@
 | Имя удалено/пересоздано сайтом | absent либо фактический API result, без обещания исторической identity | C1/C2 |
 | Один batch item падает | Сохранить per-name outcome, продолжить оставшиеся пока document current | C2 |
 | Одинаковые URL, разные Vary | Передать исходный Request выбранной строки | C3 |
-| Preview уже consumed snapshot | Refresh required, никакого поиска новой строки по URL | C3 |
+| Preview snapshot expired/evicted | Refresh required, никакого поиска новой строки по URL | C3 |
 | Таймаут после delete | Unknown; не повторять и не заявлять rollback | C4 |
 
 ## C1 — Удаление одного namespace
@@ -41,11 +41,11 @@
 **Files:** modify `src/cache/page-actions.ts`, `tests/cache/page-actions.test.ts`, `entrypoints/panel/App.svelte`; create `tests/cache/batch-deletion.test.ts`.
 **Interfaces:** intent `{kind:'delete-all-caches'}`. Prepare читает полный `caches.keys()`, фиксирует список (не overview counters). Лимит **100 names**: >100 → unsupported с инструкцией удалить по одному; не обрезать список. Ноль кешей → кнопка disabled/prepare absent сообщение, без commit. Summary показывает origin, точное число и все имена в scroll area. Target caption **Delete listed caches**.
 
-- [ ] Тест `new_cache_after_prepare_is_not_deleted`: prepare ['a','b'], позже ['a','b','c']; execute только a,b. `one_failure_keeps_other_receipts`: a applied,b failed,c applied → partial с тремя outcomes.
-- [ ] Тест `navigation_between_items_stops_remaining`: после await удаления a сменить identity; b/c skipped, нет их delete calls. `over_100_names_is_rejected_without_truncation` и `empty_batch_has_no_effect`.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/cache/batch-deletion.test.ts`; реализовать последовательное выполнение (не Promise.all), current check перед каждым API call, без повторных attempts.
-- [ ] Добавить **Delete all caches…** только в Cache Storage toolbar. Confirmation фиксирует список, Cancel safe default. После результата показать числа applied/absent/failed/skipped и имена ошибок; не обещать, что origin останется пустым. Обновить overview отдельно от receipt.
-- [ ] Повторить targeted tests. В UI fixture проверить 100 длинных имён/частичный результат/narrow dock.
+- [x] Тест `new_cache_after_prepare_is_not_deleted`: prepare ['a','b'], позже ['a','b','c']; execute только a,b. `one_failure_keeps_other_receipts`: a applied,b failed,c applied → partial с тремя outcomes.
+- [x] Тест `navigation_between_items_stops_remaining`: после await удаления a сменить identity; b/c skipped, нет их delete calls. `over_100_names_is_rejected_without_truncation` и `empty_batch_has_no_effect`.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/cache/batch-deletion.test.ts`; реализовать последовательное выполнение (не Promise.all), current check перед каждым API call, без повторных attempts.
+- [x] Добавить **Delete all caches…** только в Cache Storage toolbar. Confirmation фиксирует список, Cancel safe default. После результата показать числа applied/absent/failed/skipped и имена ошибок; не обещать, что origin останется пустым. Обновить overview отдельно от receipt.
+- [x] Повторить targeted tests. UI fixture: 100 длинных имён/частичный результат/narrow dock — evidence recorded separately in TESTING; native acceptance remains pending.
 
 ## C3 — Удаление одной записи с сохранением request identity
 
@@ -53,7 +53,7 @@
 **Interfaces:** сохранить текущий snapshot/index requestKey. `SnapshotRecord` расширить `cache:Cache`, сохраняя `cacheName,requests,expiresAt`; определение type-only вынести в `src/cache/snapshot-types.ts` для обоих factories. Intent `{kind:'delete-cache-entry',cacheName,requestKey}`; retained target = Cache + Request + inventory snapshot ID/index. Выдача/проверка snapshot выполняется в inspected document.
 
 - [ ] Тесты `request_key_requires_canonical_integer_index`, `wrong_cache_or_expired_snapshot_never_deletes`, `selected_request_and_retained_cache_are_used`: reject пустой index, отрицательный, лишний colon, дробный и вне диапазона. Не принимать malformed key через Number('')=0.
-- [ ] Тест `preview_consumed_snapshot_requires_refresh`: текущая explicit preview удаляет snapshot; Delete entry после preview показывает **Refresh this cache before deleting an entry.** и делает 0 API calls. Не продлевать silently TTL/не менять preview memory policy ради удобства.
+- [ ] Тест `expired_preview_snapshot_requires_refresh`: preview сохраняет snapshot до TTL/eviction (текущая политика ADR 0001); Delete entry после expiry/eviction показывает **Refresh this cache before deleting an entry.** и делает 0 API calls. Не продлевать silently TTL/не искать строку по URL.
 - [ ] Тест `entry_false_means_not_present`, `delete_invalidates_whole_inventory_for_that_cache`: Cache.delete(Request) true/false/rejection различимы; invalidate все snapshots данного cache, details/measurement. Не менять requestKey другой строки по сдвинутому индексу.
 - [ ] Запустить `rtk proxy pnpm exec vitest run tests/cache/entry-deletion.test.ts tests/diagnostics/page-runner.test.ts`; реализовать точные guards и сохранение Cache при list-cache-keys. Execute не вызывает caches.open и не реконструирует Request по URL. Проверять isCurrent перед Cache.delete.
 - [ ] Добавить **Delete entry…** в response toolbar выбранной записи. Confirmation показывает method, полный URL, имя кеша. После результата перечитать именно этот cache; не выбирать другую запись автоматически. Отсутствующий cache → Cache Storage.

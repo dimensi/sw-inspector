@@ -72,7 +72,7 @@ it('serializes control dependencies into a fresh realm and keeps hostile strings
   const page = (await run({ type: 'page-context' })).value;
   const hostile = '</script>\u2028\u2029';
   const prepare = { type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-cache', cacheName: hostile } } as const;
-  expect(await run({ ...prepare, intent: { kind: 'delete-all-caches' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  expect(await run({ ...prepare, intent: { kind: 'delete-cache-entry', cacheName: hostile, requestKey: 'x:0' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
   const ticket = (await run(prepare)).value;
   expect(ticket.summary).toEqual(['Origin: https://example.test', `Cache: ${hostile}`, 'Cached responses will be removed. The site may recreate this cache.']);
   const commit = { type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId } as const;
@@ -80,4 +80,30 @@ it('serializes control dependencies into a fresh realm and keeps hostile strings
   expect(receipt).toMatchObject({ ok: true, value: { status: 'completed', items: [{ target: hostile, outcome: 'applied' }] } });
   expect(await run(commit)).toEqual(receipt);
   expect(realm.effects).toBe(1);
+});
+
+it('executes a frozen batch through serialized production dependencies in a fresh realm', async () => {
+  const events = new EventTarget();
+  const names = ['a', 'b', 'c'];
+  const calls: string[] = [];
+  const realm = { crypto, navigator: {}, location: { origin: 'https://batch.test', href: 'https://batch.test/' },
+    setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
+    caches: { keys: async () => [...names], delete: async (name: string) => { calls.push(name); if (name === 'b') throw Error('denied'); return true; } } };
+  let sequence = 0;
+  async function run(command: InspectorCommand) {
+    const id = `batch-${++sequence}`;
+    runInNewContext(createJobStartExpression(command, id), realm);
+    await new Promise(resolve => setImmediate(resolve));
+    return JSON.parse(runInNewContext(createJobPollExpression(id), realm)).result;
+  }
+  const page = (await run({ type: 'page-context' })).value;
+  const ticket = (await run({ type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-all-caches' } })).value;
+  names.push('created-after-confirmation');
+  const command = { type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId } as const;
+  const receipt = await run(command);
+  expect(receipt).toMatchObject({ ok: true, value: { status: 'partial', items: [
+    { target: 'a', outcome: 'applied' }, { target: 'b', outcome: 'failed' }, { target: 'c', outcome: 'applied' },
+  ] } });
+  expect(await run(command)).toEqual(receipt);
+  expect(calls).toEqual(['a', 'b', 'c']);
 });

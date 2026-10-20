@@ -44,13 +44,13 @@
     <dt>Origin</dt><dd>{ticket.page.origin}</dd>
     <dt>Page URL</dt><dd>{ticket.page.url}</dd>
   </dl>
-  <ul id="{id}-summary">
+  <ul id="{id}-summary" class:batch={ticket.kind === 'delete-all-caches'}>
     {#each ticket.summary as line, index (index)}<li>{line}</li>{/each}
   </ul>
   {#if busy}<p bind:this={runningMessage} tabindex="-1" role="status">Action running. Waiting for the outcome…</p>{/if}
   <footer>
     <button bind:this={cancelButton} onclick={oncancel} disabled={busy}>Cancel</button>
-    <button onclick={onconfirm} disabled={busy}>{busy ? 'Running…' : 'Confirm'}</button>
+    <button onclick={onconfirm} disabled={busy}>{busy ? 'Running…' : ticket.kind === 'delete-all-caches' ? 'Delete listed caches' : 'Confirm'}</button>
   </footer>
 </dialog>
 
@@ -66,6 +66,7 @@
   dt { color: var(--secondary); }
   dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
   ul { margin: 12px; padding-left: 16px; overflow-wrap: anywhere; }
+  ul.batch { max-height: 40dvh; overflow: auto; }
   p { margin: 12px; }
   footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--chrome); }
 </style>
