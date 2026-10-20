@@ -95,6 +95,21 @@ describe('page diagnostic runner', () => {
     expect(storage.open).not.toHaveBeenCalled();
   });
 
+  it('keeps the inventory usable after previewing a response', async () => {
+    installOrigin({ runtime: ['first', 'second'].map((body) => ({
+      request: new Request(`https://app.test/${body}`),
+      response: new Response(body, { headers: { 'content-type': 'text/plain' } }),
+    })) });
+    const inventory = value(await executeDiagnostic({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+    for (const index of [0, 1, 0]) {
+      const command = { type: 'get-response-details' as const, cacheName: 'runtime', requestKey: inventory.entries[index].requestKey };
+      const metadata = value(await executeDiagnostic(command) as Result<CacheDetails>);
+      expect(metadata.preview).toEqual({ kind: 'not-requested' });
+      const preview = value(await executeDiagnostic({ ...command, preview: true }) as Result<CacheDetails>);
+      expect(preview.preview).toEqual({ kind: 'text', text: index === 0 ? 'first' : 'second' });
+    }
+  });
+
   it('expires snapshots instead of resolving stale entry keys', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-19T12:00:00Z'));

@@ -19,6 +19,10 @@ The suite covers relay/session routing, expression escaping, timeouts/stale resu
 
 ## UI fixture and visual baseline
 
+### Sequential response previews — 2026-10-20
+
+Added a regression test that reads metadata and previews for the first entry, the second entry, and the first entry again using one inventory. Before the fix it failed with `Cache inventory expired; refresh the cache list`; retaining the snapshot after preview makes it pass. The existing five-minute expiry test still passes. Full suite: 56 tests passed; `check` reported 0 errors/0 warnings; `sync:safari` (including `build:safari`) and `check:manifest` passed. Inspected the generated manifest: MV3, `devtools_page`, only `devtools`/`activeTab`, no host permissions, background, or content scripts. Xcode resources were synchronized. After rebuilding and launching the Xcode application, the user confirmed in Safari that the reported cache browsing issue was resolved. Safari/macOS versions and origin were not re-recorded for this check; this confirmation does not close other native acceptance cases.
+
 Build Safari, then run `python3 .impeccable/preview/server.py` and open `http://127.0.0.1:4186/preview.html?session=preview`. Stop the server after use. The fixture provides synthetic in-memory browser data and exercises the built panel; it is not included in the extension bundle and does not inspect a real website.
 
 Inspect both themes, wide and narrow dock widths, long values, empty/error/partial states, keyboard selection, local filtering, explicit preview, measurement, and duplicate offline inputs. Verify no automatic eval on initial mount and no document-wide horizontal overflow. Preserve [DESIGN.md](../DESIGN.md).

@@ -177,7 +177,6 @@ async function details(cacheName: string, requestKey: string, preview: boolean):
         preview: preview ? await boundedText(response) : { kind: 'not-requested' },
       },
     };
-    if (preview) registry().delete(snapshotId);
     return result;
   } catch (error) {
     return { ok: false, error: { code: 'evaluation-failed', message: message(error) } };
