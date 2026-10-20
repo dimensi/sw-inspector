@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** W1–W2 code-complete (2026-10-21); W3–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1–W3 code-complete (2026-10-21); W4–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -109,13 +109,13 @@
 
 **Interfaces:** `handlers['unregister-worker'].execute(retained, isCurrent): Promise<ActionItem[]>`; true → `applied`, false → `absent`, rejection → `failed`.
 
-- [ ] Написать `unregister preserves controller and caches`: после true исходный controller остаётся, spies `caches.delete`, `registration.update`, `location.reload` имеют ноль вызовов; item message `Unregister request completed. Existing pages may remain controlled.`.
-- [ ] Написать `unregister false means absent`: native API вызван один раз, receipt item `absent`, message `Registration was not found.`; нет ложно успешного текста о завершении worker.
-- [ ] Написать `unregister rejects stale confirmation`: замена объекта с тем же scope между prepare и execute вызывает stale-target до native unregister; отдельный rejected API возвращает `failed`.
-- [ ] Запустить `rtk pnpm test tests/workers/page-actions.test.ts`; убедиться в FAIL новых случаев.
-- [ ] Реализовать unregister через ту же повторную проверку identity/references/сроков; вызвать только сохранённый `registration.unregister()` и сохранить boolean semantics.
-- [ ] Не обещать атомарность: сайт может повторно зарегистрироваться после проверки; строка результата описывает вызов API, новый overview показывает текущее состояние.
-- [ ] Запустить тот же command; ожидается PASS для update и unregister. Проверить отсутствие веток register/skipWaiting/terminate.
+- [x] Написать `unregister preserves controller and caches`: после true исходный controller остаётся, spies `caches.delete`, `registration.update`, `location.reload` имеют ноль вызовов; item message `Unregister request completed. Existing pages may remain controlled.`.
+- [x] Написать `unregister false means absent`: native API вызван один раз, receipt item `absent`, message `Registration was not found.`; нет ложно успешного текста о завершении worker.
+- [x] Написать `unregister rejects stale confirmation`: замена объекта с тем же scope между prepare и execute вызывает stale-target до native unregister; отдельный rejected API возвращает `failed`.
+- [x] Запустить `rtk pnpm test tests/workers/page-actions.test.ts`; убедиться в FAIL новых случаев.
+- [x] Реализовать unregister через ту же повторную проверку identity/references/сроков; вызвать только сохранённый `registration.unregister()` и сохранить boolean semantics.
+- [x] Не обещать атомарность: сайт может повторно зарегистрироваться после проверки; строка результата описывает вызов API, новый overview показывает текущее состояние.
+- [x] Запустить тот же command; ожидается PASS для update и unregister. Проверить отсутствие веток register/skipWaiting/terminate.
 
 ### W4: Подключение к control runner и неоднозначный исход
 

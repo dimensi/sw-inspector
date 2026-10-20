@@ -63,9 +63,9 @@ export function createWorkerActions(context: PageContext): ActionHandlers {
       return reject('stale-target', 'Refresh before managing this registration.');
     }
   }
-  async function update(value: unknown, isCurrent: () => boolean): Promise<ActionItem[]> {
+  async function execute(kind: Retained['kind'], value: unknown, isCurrent: () => boolean): Promise<ActionItem[]> {
     const retained = value as Retained;
-    if (retained.kind !== 'update-worker') return reject('invalid-command', 'Unsupported worker action.');
+    if (retained.kind !== kind) return reject('invalid-command', 'Unsupported worker action.');
     validate(retained, isCurrent);
     if (!('serviceWorker' in navigator)) return reject('unsupported', 'Service Worker API is unavailable.');
     const registrations = await navigator.serviceWorker.getRegistrations();
@@ -75,14 +75,19 @@ export function createWorkerActions(context: PageContext): ActionHandlers {
     }
     const target = retained.registration.scope;
     try {
-      await retained.registration.update();
-      return [{ target, outcome: 'applied', message: 'Update check completed. Activation is not guaranteed.' }];
+      if (kind === 'update-worker') {
+        await retained.registration.update();
+        return [{ target, outcome: 'applied', message: 'Update check completed. Activation is not guaranteed.' }];
+      }
+      const removed = await retained.registration.unregister();
+      return [{ target, outcome: removed ? 'applied' : 'absent', message: removed
+        ? 'Unregister request completed. Existing pages may remain controlled.' : 'Registration was not found.' }];
     } catch (error) {
       return [{ target, outcome: 'failed', message: error instanceof Error ? error.message : String(error) }];
     }
   }
-  async function unsupported(): Promise<never> {
-    return reject('unsupported', 'Worker actions are not enabled.');
-  }
-  return { 'update-worker': { prepare, execute: update }, 'unregister-worker': { prepare, execute: unsupported } };
+  return {
+    'update-worker': { prepare, execute: (value, isCurrent) => execute('update-worker', value, isCurrent) },
+    'unregister-worker': { prepare, execute: (value, isCurrent) => execute('unregister-worker', value, isCurrent) },
+  };
 }

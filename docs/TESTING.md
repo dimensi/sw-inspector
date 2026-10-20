@@ -400,3 +400,10 @@ The implementation owner separately reported **195/195 tests in 23 files**, `pnp
 Independent QA ran `rtk proxy pnpm exec vitest run tests/workers/page-actions.test.ts`: **29/29 tests passed**. Source review and tests confirm one update call on the retained selected registration, no unregister or state rewriting, replacement/slot/expiry/page checks before the call and after the registration lookup, a local failed item for a rejected native update, and no retry or pre-effect rejection claim after late navigation. The applied item says **Update check completed. Activation is not guaranteed.** W2 remains internal: the worker handler is not wired to production expressions or exposed as UI; no browser or native Safari acceptance was performed.
 
 W2 implementation owner separately reported **211/211 tests in 23 files**, `pnpm check` **0 errors/0 warnings**, Safari build and manifest checker passing, with manual generated-manifest review unchanged. Independent QA did not duplicate that full suite.
+
+
+### W3 retained worker unregister handler — 2026-10-21
+
+Independent QA ran `rtk proxy pnpm exec vitest run tests/workers/page-actions.test.ts`: **40/40 tests passed**. The unregister handler calls only the retained registration once after current-document/reference/slot/TTL revalidation. True produces `applied` with **Unregister request completed. Existing pages may remain controlled.**; false produces `absent` with **Registration was not found.** Rejection stays a local failed item. Tests preserve the existing controller and assert no cache deletion, update or page reload. Replacement during the awaited registration lookup rejects before either object's unregister call. Source review found no additional lifecycle operations. This is internal code-complete; production wiring, UI and native Safari acceptance remain pending.
+
+W3 implementation owner separately reported **222/222 tests in 23 files**, `pnpm check` **0 errors/0 warnings**, Safari build, manifest checker and `git diff --check` passing, with manual generated-manifest review unchanged. Independent QA did not duplicate that full suite.

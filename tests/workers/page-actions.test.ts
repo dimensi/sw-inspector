@@ -153,10 +153,65 @@ describe('worker update', () => {
     expect(found[1].update).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps unregister execute unsupported', async () => {
+
+});
+
+
+describe('worker unregister', () => {
+  it.each([true, false])('unregister %s preserves controller and Cache Storage', async result => {
+    const { handlers, id, found } = await setup();
+    const controller = found[1].active;
+    Object.assign(navigator.serviceWorker, { controller });
+    const deleteCache = vi.fn();
+    Object.assign(caches, { delete: deleteCache });
+    const reload = vi.fn();
+    Object.assign(location, { reload });
+    found[1].unregister.mockResolvedValueOnce(result);
+    const prepared = await handlers['unregister-worker']!.prepare({ kind: 'unregister-worker', registrationId: id });
+    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => true)).resolves.toEqual([
+      { target: found[1].scope, outcome: result ? 'applied' : 'absent', message: result
+        ? 'Unregister request completed. Existing pages may remain controlled.' : 'Registration was not found.' },
+    ]);
+    expect(found[1].unregister).toHaveBeenCalledTimes(1);
+    expect(found[0].unregister).not.toHaveBeenCalled();
+    for (const row of found) expect(row.update).not.toHaveBeenCalled();
+    expect(deleteCache).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+    expect(navigator.serviceWorker.controller).toBe(controller);
+  });
+
+  it.each(['registration', 'installing', 'waiting', 'active', 'expiry', 'current', 'navigation', 'refresh'] as const)('rejects stale %s before unregister', async change => {
+    const { handlers, id, found, context } = await setup();
+    const selected = found[1];
+    const prepared = await handlers['unregister-worker']!.prepare({ kind: 'unregister-worker', registrationId: id });
+    if (change === 'registration') found[1] = registration(selected.scope);
+    if (['installing', 'waiting', 'active'].includes(change)) Object.assign(selected, { [change]: { ...selected.active } });
+    if (change === 'expiry') vi.setSystemTime(Date.now() + 300000);
+    if (change === 'navigation') location.href += '?new';
+    if (change === 'refresh') context.registrations.clear();
+    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => change !== 'current'))
+      .rejects.toMatchObject({ kind: 'action-rejected', code: 'stale-target' });
+    expect(selected.unregister).not.toHaveBeenCalled();
+    expect(found[1].unregister).not.toHaveBeenCalled();
+  });
+
+  it('rejects replacement during collection await without unregistering either object', async () => {
+    const { handlers, id, found, getRegistrations } = await setup();
+    const selected = found[1];
+    const prepared = await handlers['unregister-worker']!.prepare({ kind: 'unregister-worker', registrationId: id });
+    getRegistrations.mockImplementationOnce(async () => { found[1] = registration(selected.scope); return found; });
+    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => true)).rejects.toMatchObject({ code: 'stale-target' });
+    expect(selected.unregister).not.toHaveBeenCalled();
+    expect(found[1].unregister).not.toHaveBeenCalled();
+  });
+
+  it('keeps native unregister rejection local', async () => {
     const { handlers, id, found } = await setup();
     const prepared = await handlers['unregister-worker']!.prepare({ kind: 'unregister-worker', registrationId: id });
-    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => true)).rejects.toMatchObject({ code: 'unsupported' });
-    expect(found[1].unregister).not.toHaveBeenCalled();
+    found[1].unregister.mockRejectedValueOnce(new DOMException('denied', 'SecurityError'));
+    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => true)).resolves.toEqual([
+      { target: found[1].scope, outcome: 'failed', message: 'denied' },
+    ]);
+    expect(found[1].unregister).toHaveBeenCalledTimes(1);
   });
 });
