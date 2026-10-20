@@ -136,3 +136,43 @@ it('retains Cache and Request across serialized inventory, preview, prepare and 
   expect(open).toHaveBeenCalledTimes(1);
   expect(await run({ type: 'get-response-details', cacheName: 'a', requestKey })).toMatchObject({ ok: false, error: { code: 'stale-snapshot' } });
 });
+
+
+it('worker handlers survive serialization and hostile scope/scriptURL remain data', async () => {
+  const events = new EventTarget();
+  const hostile = 'https://worker.test/"\n</script>;globalThis.injected=true';
+  const registrations = ['first', hostile].map(scope => ({ scope, installing: null, waiting: null,
+    active: { scriptURL: hostile, state: 'activated' }, update: vi.fn(async () => undefined), unregister: vi.fn(async () => true) }));
+  const realm = { crypto, location: { origin: 'https://worker.test', href: 'https://worker.test/' },
+    navigator: { serviceWorker: { controller: null, getRegistrations: async () => registrations } },
+    setTimeout: () => 0, clearTimeout: () => {}, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) };
+  let sequence = 0;
+  async function run(command: InspectorCommand) {
+    const id = `worker-${++sequence}`;
+    const source = createJobStartExpression(command, id);
+    expect(source).not.toContain('</script>');
+    runInNewContext(source, realm);
+    await new Promise(resolve => setImmediate(resolve));
+    const reply = JSON.parse(runInNewContext(createJobPollExpression(id), realm));
+    expect(reply.state).toBe('complete');
+    return reply.result;
+  }
+  const overview = (await run({ type: 'overview' })).value;
+  const page = overview.page;
+  const registrationId = overview.registrations[1].registrationId;
+  for (const kind of ['update-worker', 'unregister-worker'] as const) {
+    const prepared = await run({ type: 'prepare-action', expectedPage: page, intent: { kind, registrationId } });
+    expect(prepared.ok).toBe(true);
+    expect(prepared.value.summary).toContain(hostile);
+    expect(registrations[1][kind === 'update-worker' ? 'update' : 'unregister']).not.toHaveBeenCalled();
+    const commit = { type: 'commit-action', expectedPage: page, ticketId: prepared.value.ticketId } as const;
+    const receipt = await run(commit);
+    expect(receipt).toMatchObject({ ok: true, value: { kind, items: [{ target: hostile, outcome: 'applied' }] } });
+    expect(await run(commit)).toEqual(receipt);
+  }
+  expect(registrations[0].update).not.toHaveBeenCalled();
+  expect(registrations[0].unregister).not.toHaveBeenCalled();
+  expect(registrations[1].update).toHaveBeenCalledTimes(1);
+  expect(registrations[1].unregister).toHaveBeenCalledTimes(1);
+  expect(realm).not.toHaveProperty('injected');
+});

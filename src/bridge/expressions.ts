@@ -1,4 +1,5 @@
 import type { InspectorCommand } from '../domain/commands';
+import { createWorkerActions } from '../workers/page-actions';
 import { createCacheActions } from '../cache/page-actions';
 import { createControlRunner } from '../actions/page-runner';
 import { createPageContext } from './page-context';
@@ -27,7 +28,10 @@ export function createJobStartExpression(command: InspectorCommand, jobId: strin
     Promise.resolve().then(() => {
       const context = (${createPageContext.toString()})(${serialize(contextRegistryKey)});
       const command = ${serialize(command)};
-      const handlers = (${createCacheActions.toString()})(context, ${serialize(snapshotRegistryKey)});
+      const handlers = {
+        ...(${createCacheActions.toString()})(context, ${serialize(snapshotRegistryKey)}),
+        ...(${createWorkerActions.toString()})(context),
+      };
       return command.type === 'prepare-action' || command.type === 'commit-action'
         ? (${createControlRunner.toString()})(context, handlers)(command)
         : (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)}, context)(command);

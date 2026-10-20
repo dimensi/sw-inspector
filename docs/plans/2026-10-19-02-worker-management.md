@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** W1–W3 code-complete (2026-10-21); W4–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1–W4 code-complete (2026-10-21); W5–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -123,13 +123,13 @@
 
 **Interfaces:** фабрика worker actions явно сериализуется и вызывается с тем же PageContext, что `createControlRunner(context, handlers)`; map объединяется с уже установленными handlers без перезаписи.
 
-- [ ] Добавить `worker handlers survive expression serialization`: выполнить generated start/poll через `new Function`, без module globals; prepare ничего не мутирует, commit выбранного ticket вызывает ровно нужный native mock.
-- [ ] Добавить malicious scope/scriptURL с кавычками, newline и `</script>`; данные остаются текстом, произвольный код не выполняется.
-- [ ] Добавить `commit response loss does not retry unregister`: native эффект произошёл, poll timeout/missing/malformed; результат `outcome-unknown`, `expect(unregister).toHaveBeenCalledTimes(1)`.
-- [ ] Запустить `rtk pnpm test tests/bridge/expressions.test.ts tests/bridge/transport.test.ts`; новые проверки должны сначала падать.
-- [ ] Подключить self-contained factory к общей сборке выражения; не импортировать helper, который будет потерян после `.toString()`.
-- [ ] При обнаружении пробела в shared protocol исправлять общий модуль 00 с его тестами, без worker-specific retry или прямого panel eval.
-- [ ] Повторить command; ожидается PASS. Сверить, что 30-секундный ticket и ledger limits взяты из 00, а не продублированы здесь.
+- [x] Добавить `worker handlers survive expression serialization`: выполнить generated start/poll через `new Function`, без module globals; prepare ничего не мутирует, commit выбранного ticket вызывает ровно нужный native mock.
+- [x] Добавить malicious scope/scriptURL с кавычками, newline и `</script>`; данные остаются текстом, произвольный код не выполняется.
+- [x] Добавить `commit response loss does not retry unregister`: native эффект произошёл, poll timeout/missing/malformed; результат `outcome-unknown`, `expect(unregister).toHaveBeenCalledTimes(1)`.
+- [x] Запустить `rtk pnpm test tests/bridge/expressions.test.ts tests/bridge/transport.test.ts`; новые проверки должны сначала падать.
+- [x] Подключить self-contained factory к общей сборке выражения; не импортировать helper, который будет потерян после `.toString()`.
+- [x] При обнаружении пробела в shared protocol исправлять общий модуль 00 с его тестами, без worker-specific retry или прямого panel eval.
+- [x] Повторить command; ожидается PASS. Сверить, что 30-секундный ticket и ledger limits взяты из 00, а не продублированы здесь.
 
 ### W5: Компактные controls и подтверждение выбранной цели
 

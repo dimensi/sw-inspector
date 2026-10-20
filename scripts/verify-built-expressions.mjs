@@ -40,12 +40,12 @@ const events = new EventTarget();
 let names = ['</script>\u2028\u2029'];
 const deleted = [];
 const realm = { crypto, navigator: {}, location: { origin: 'https://fixture.test', href: 'https://fixture.test/' },
-  setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0, caches: { keys: async () => [...names], delete: async name => { deleted.push(name); realm.effects++; return true; } } };
+  setTimeout: () => 0, clearTimeout: () => {}, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events), effects: 0, caches: { keys: async () => [...names], delete: async name => { deleted.push(name); realm.effects++; return true; } } };
 let sequence = 0;
 async function run(command) {
   const id = `compiled-${++sequence}`;
   const production = emitters.start(command, id);
-  assert.ok(production.includes('const handlers = ('));
+  assert.ok(production.includes('const handlers = '));
   assert.ok(!production.includes('globalThis.effects'));
   assert.ok(!production.includes('</script>') && !production.includes('\u2028') && !production.includes('\u2029'));
   assert.deepEqual(JSON.parse(runInNewContext(production, realm)), { jobId: id });
@@ -132,4 +132,49 @@ assert.equal(entryDeletes[0][0], requests[1], 'Exact retained Request');
 assert.equal(opened, 1);
 assert.equal(realm.effects, 3, 'Entry action must not call CacheStorage.delete');
 assert.equal((await run({ type: 'get-response-details', cacheName: names[0], requestKey })).error.code, 'stale-snapshot');
-console.log(`PASS ${filename}: compiled start/poll, context/overview, C1 hostile-name prepare/commit, C2 fixed names/new-name exclusion, empty/101 rejection, C3 inventory/preview/prepare/commit retained Cache+Request and invalidation, duplicate commits execute once`);
+// W4 verifies worker factories from the actual built artifact, without source closures.
+names = [];
+let updateCalls = 0;
+let unregisterCalls = 0;
+let firstCalls = 0;
+const hostileWorkerURL = 'https://fixture.test/worker.js?value=</script>\u2028\u2029';
+const firstRegistration = { scope: 'https://fixture.test/first/', installing: null, waiting: null,
+  active: { scriptURL: hostileWorkerURL, state: 'activated' },
+  update: async () => { firstCalls++; }, unregister: async () => { firstCalls++; return true; } };
+const secondRegistration = { scope: 'https://fixture.test/second/?value=</script>\u2028\u2029', installing: null, waiting: null,
+  active: { scriptURL: hostileWorkerURL, state: 'activated' },
+  update: async () => { updateCalls++; }, unregister: async () => { unregisterCalls++; return true; } };
+realm.navigator.serviceWorker = { controller: firstRegistration.active,
+  getRegistrations: async () => [firstRegistration, secondRegistration] };
+const workerOverview = await run({ type: 'overview' });
+assert.equal(workerOverview.ok, true);
+const selectedRegistration = workerOverview.value.registrations[1];
+assert.ok(selectedRegistration.registrationId && selectedRegistration.active.workerId);
+assert.notEqual(selectedRegistration.registrationId, workerOverview.value.registrations[0].registrationId);
+assert.notEqual(selectedRegistration.active.workerId, workerOverview.value.registrations[0].active.workerId);
+for (const kind of ['update-worker', 'unregister-worker']) {
+  const prepared = await run({ type: 'prepare-action', expectedPage: page,
+    intent: { kind, registrationId: selectedRegistration.registrationId } });
+  assert.equal(prepared.ok, true);
+  assert.ok(prepared.value.summary.includes(secondRegistration.scope));
+  assert.equal(kind === 'update-worker' ? updateCalls : unregisterCalls, 0, 'Prepare has zero worker effects');
+  const workerCommit = { type: 'commit-action', expectedPage: page, ticketId: prepared.value.ticketId };
+  const committed = await run(workerCommit);
+  assert.equal(committed.ok, true);
+  assert.equal(committed.value.items[0].outcome, 'applied');
+  assert.equal(committed.value.items[0].target, secondRegistration.scope);
+  assert.deepEqual(await run(workerCommit), committed);
+  assert.equal(kind === 'update-worker' ? updateCalls : unregisterCalls, 1, 'Duplicate commit has one native effect');
+}
+assert.equal(firstCalls, 0, 'Equal script URLs must not redirect selection');
+assert.equal(realm.navigator.serviceWorker.controller, firstRegistration.active);
+assert.equal(realm.effects, 3, 'Worker actions must not delete caches');
+const staleWorkerTicket = await run({ type: 'prepare-action', expectedPage: page,
+  intent: { kind: 'update-worker', registrationId: selectedRegistration.registrationId } });
+assert.equal(staleWorkerTicket.ok, true);
+secondRegistration.active = { ...secondRegistration.active };
+const staleWorkerCommit = await run({ type: 'commit-action', expectedPage: page, ticketId: staleWorkerTicket.value.ticketId });
+assert.equal(staleWorkerCommit.ok, false);
+assert.equal(staleWorkerCommit.error.code, 'stale-target');
+assert.equal(updateCalls, 1);
+console.log(`PASS ${filename}: compiled start/poll, context/overview, C1/C2/C3 retained cache contracts, W4 retained worker update/unregister, hostile scope/script data, stale worker rejection and duplicate commits execute once`);

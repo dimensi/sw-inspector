@@ -212,3 +212,42 @@ it('rejects malformed prepare tickets and preserves a typed prepare failure', as
   const evaluate = vi.fn().mockImplementationOnce(acknowledgedJob).mockResolvedValueOnce(completed(result));
   await expect(createTransport(evaluate, { pollIntervalMs: 0 }).invoke({ type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-all-caches' } })).resolves.toEqual(result);
 });
+
+
+it.each(['lost ack', 'malformed ack', 'missing poll', 'malformed receipt', 'timeout'] as const)('worker commit %s stays unknown after one real unregister', async fault => {
+  const events = new EventTarget();
+  const unregister = vi.fn(async () => true);
+  const registration = { scope: 'https://example.test/worker/', installing: null, waiting: null, active: null, unregister };
+  const realm = { crypto, navigator: { serviceWorker: { controller: null, getRegistrations: async () => [registration] } },
+    location: { origin: page.origin, href: page.url }, setTimeout: () => 0, clearTimeout: () => {},
+    addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) };
+  let corrupt = false;
+  let commitStarts = 0;
+  const evaluate: EvalFn = async source => {
+    const raw = runInNewContext(source, realm);
+    if (corrupt) {
+      if (source.includes('const id = ')) {
+        commitStarts++;
+        await new Promise(resolve => setImmediate(resolve));
+        if (fault === 'lost ack') throw new Error('Disconnected after dispatch');
+        if (fault === 'malformed ack') return ['{}', undefined];
+      } else {
+        if (fault === 'timeout') return new Promise(() => {});
+        if (fault === 'missing poll') return [JSON.stringify({ state: 'missing' }), undefined];
+        return completed({ ok: true, value: { invalid: true } });
+      }
+    }
+    return [raw, undefined];
+  };
+  const transport = createTransport(evaluate, { pollIntervalMs: 0, timeoutMs: 100, getOrigin: () => page.origin });
+  const overview = await transport.invoke<import('../../src/domain/types').Overview>({ type: 'overview' });
+  if (!overview.ok) throw new Error('Missing overview');
+  const expectedPage = overview.value.page;
+  const prepared = await transport.invoke<{ ticketId: string }>({ type: 'prepare-action', expectedPage,
+    intent: { kind: 'unregister-worker', registrationId: overview.value.registrations[0].registrationId! } });
+  if (!prepared.ok) throw new Error('Missing worker ticket');
+  corrupt = true;
+  await expect(transport.invoke({ type: 'commit-action', expectedPage, ticketId: prepared.value.ticketId })).resolves.toEqual(unknown);
+  expect(unregister).toHaveBeenCalledTimes(1);
+  expect(commitStarts).toBe(1);
+});
