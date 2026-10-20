@@ -61,7 +61,7 @@
 
 ## C4 — Выпуск и native acceptance
 
-**Status 2026-10-21:** fixture, policy/copy и release code checks завершены; **C4 не release-accepted**, native проверки ниже остаются открыты. Владелец доказательств — [TESTING](../TESTING.md#c4-independent-release-verification--2026-10-21).
+**Status 2026-10-21:** fixture, policy/copy и release code checks завершены; два stale-document/no-effect случая после reload без Refresh подтверждены пользователем ([evidence](../TESTING.md#c4-stale-document-user-reported-native-safari-acceptance--2026-10-21)). **C4 не release-accepted**: остальные native проверки ниже остаются открыты. Владелец доказательств — [TESTING](../TESTING.md#c4-independent-release-verification--2026-10-21).
 
 **Files:** create `fixtures/controls-demo/index.html`, `fixtures/controls-demo/sw.js` (расширяется W/S планами); modify `PRODUCT.md`, `AGENTS.md`, `README.md`, `DESIGN.md`, `package.json`, `wxt.config.ts`, `docs/adr/0001-read-only-diagnostics.md`, `docs/adr/0004-explicit-development-actions.md`, `docs/TESTING.md`. Маркетинговую read-only copy пересмотреть без ручного редактирования generated assets.
 

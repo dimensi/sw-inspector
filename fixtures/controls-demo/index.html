@@ -3,15 +3,69 @@
 <h1>Disposable Cache Storage fixture</h1>
 <p>Use only on a disposable localhost origin. All fixture cache names begin with <code>sw-inspector-fixture-</code>. Nothing runs automatically.</p>
 <button id="seed">Seed fixture</button> <button id="inspect">Inspect fixture caches</button> <button id="cleanup">Cleanup fixture</button>
+<p>Native fault injection only: <button id="delay">Delay next fixture deletion result</button> <button id="restore" disabled>Restore normal deletion</button></p>
+<p id="delay-status" role="status">Normal deletion. The optional helper delays one successful fixture namespace deletion result by 10 seconds, after the deletion has happened. Reload restores normal behavior.</p>
 <pre id="result" role="status"></pre>
 <script type="module">
 const prefix = 'sw-inspector-fixture-';
 const result = document.querySelector('#result');
+const delayButton = document.querySelector('#delay');
+const restoreButton = document.querySelector('#restore');
+const delayStatus = document.querySelector('#delay-status');
+let restoreDeletion = null;
+delayButton.onclick = () => {
+  if (restoreDeletion) return;
+  const originalDelete = caches.delete;
+  function restore() {
+    caches.delete = originalDelete;
+    restoreDeletion = null;
+    delayButton.disabled = false;
+    restoreButton.disabled = true;
+  }
+  caches.delete = async function(name) {
+    if (typeof name !== 'string' || !name.startsWith(prefix)) return originalDelete.call(this, name);
+    restore(); // One shot: restore before the API call or any await.
+    delayButton.disabled = true;
+    let deleted;
+    try { deleted = await originalDelete.call(this, name); }
+    catch (error) {
+      delayButton.disabled = false;
+      delayStatus.textContent = 'Fixture deletion failed; no result delay. Normal deletion restored.';
+      throw error;
+    }
+    if (deleted) {
+      delayButton.disabled = true;
+      delayStatus.textContent = name + ' was deleted; holding its result for 10 seconds. Reload the fixture now to test navigation during deletion.';
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      delayButton.disabled = false;
+      delayStatus.textContent = 'Delayed result released. Normal deletion restored.';
+    } else {
+      delayButton.disabled = false;
+      delayStatus.textContent = 'The fixture namespace was absent; no result delay. Normal deletion restored.';
+    }
+    return deleted;
+  };
+  restoreDeletion = restore;
+  delayButton.disabled = true;
+  restoreButton.disabled = false;
+  delayStatus.textContent = 'Armed: the next fixture namespace deletion result will be delayed after a successful deletion. Other namespace calls are unchanged.';
+};
+restoreButton.onclick = () => {
+  restoreDeletion?.();
+  delayStatus.textContent = 'Normal deletion restored.';
+};
 async function inspect() {
-  const names = (await caches.keys()).filter(name => name.startsWith(prefix));
+  const allNames = await caches.keys();
+  const names = allNames.filter(name => name.startsWith(prefix));
+  const otherCaches = allNames.filter(name => !name.startsWith(prefix));
   const rows = [];
   for (const name of names) { const cache = await caches.open(name); const keys = await cache.keys(); const entries = []; for (const request of keys) entries.push({ method: request.method, url: request.url, language: request.headers.get('Accept-Language'), body: await (await cache.match(request)).text() }); rows.push({ name, keys: keys.length, entries }); }
-  result.textContent = JSON.stringify(rows, null, 2);
+  result.textContent = JSON.stringify({
+    batchSafety: otherCaches.length ? 'Other namespaces present — do not batch delete.' : 'No other namespaces present. Confirm the panel lists only fixture names before batch deletion.',
+    otherCacheCount: otherCaches.length,
+    otherCaches,
+    fixtureCaches: rows,
+  }, null, 2);
 }
 function action(id, run) { document.querySelector(id).onclick = async () => { try { await run(); await inspect(); } catch (error) { result.textContent = String(error); } }; }
 action('#seed', async () => { for (const name of ['alpha', 'beta']) { const cache = await caches.open(prefix + name); await cache.put(new Request(location.origin + '/fixture-' + name), new Response('Fixture ' + name, { headers: { 'Content-Type': 'text/plain' } })); } const cache = await caches.open(prefix + 'entries'); for (const language of ['en', 'fr']) await cache.put(new Request(location.origin + '/fixture-vary', { headers: { 'Accept-Language': language } }), new Response(language, { headers: { Vary: 'Accept-Language', 'Content-Type': 'text/plain' } })); for (const version of [1, 2]) await cache.put(new Request(location.origin + '/fixture-query?v=' + version), new Response('Version ' + version, { headers: { 'Content-Type': 'text/plain' } })); });
