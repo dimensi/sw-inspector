@@ -12,9 +12,10 @@
   const cacheAPI = { keys: async () => namespaces, open: async () => ({keys: async () => resources, match: async (r) => responseFor(r)}), match: async (r) => responseFor(r) };
   const worker = {scriptURL: origin + '/service-worker.js',state:'activated'};
   const fakeNavigator = {serviceWorker:{controller:worker,getRegistrations:async () => [{scope:origin+'/',active:worker,waiting:null,installing:null}]},storage:{estimate:async()=>({usage:9243650,quota:10737418240})}};
-  const scope = {caches:cacheAPI};
+  const lifecycle = new EventTarget();
+  const scope = {caches:cacheAPI,addEventListener:lifecycle.addEventListener.bind(lifecycle),removeEventListener:lifecycle.removeEventListener.bind(lifecycle)};
   window.previewControl = {denied:false,calls:[],listeners:new Set()};
-  const evaluate = (source) => new Function('globalThis','navigator','caches','location',`return (${source});`)(scope,fakeNavigator,cacheAPI,{origin});
+  const evaluate = (source) => new Function('globalThis','navigator','caches','location',`return (${source});`)(scope,fakeNavigator,cacheAPI,{origin,href:origin+'/'});
   window.browser = {
     runtime:{id:'synthetic-ui-fixture',getURL:path=>new URL(path,location.origin).href,onMessage:{addListener:listener=>previewControl.listeners.add(listener),removeListener:listener=>previewControl.listeners.delete(listener)},
       async sendMessage(message) {
