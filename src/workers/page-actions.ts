@@ -1,5 +1,5 @@
 import type { PageContext } from '../bridge/page-context';
-import type { ActionHandlers, ActionIntent, ActionRejection } from '../domain/actions';
+import type { ActionHandlers, ActionIntent, ActionItem, ActionRejection } from '../domain/actions';
 import type { PageIdentity } from '../domain/types';
 
 // Serialized into the inspected document; keep runtime dependencies inside this factory.
@@ -51,8 +51,38 @@ export function createWorkerActions(context: PageContext): ActionHandlers {
         : 'Existing pages may remain controlled. Cache Storage is unchanged.',
     ] };
   }
-  async function execute(): Promise<never> {
+  function validate(retained: Retained, isCurrent: () => boolean) {
+    const record = context.registrations.get(retained.registrationId);
+    const registration = retained.registration;
+    if (!isCurrent() || !context.isCurrent(retained.page) || retained.expiresAt <= Date.now()
+      || !record || record.registration !== registration || record.expiresAt !== retained.expiresAt
+      || !context.isCurrent(record.page)
+      || (registration.installing ?? null) !== retained.installing
+      || (registration.waiting ?? null) !== retained.waiting
+      || (registration.active ?? null) !== retained.active) {
+      return reject('stale-target', 'Refresh before managing this registration.');
+    }
+  }
+  async function update(value: unknown, isCurrent: () => boolean): Promise<ActionItem[]> {
+    const retained = value as Retained;
+    if (retained.kind !== 'update-worker') return reject('invalid-command', 'Unsupported worker action.');
+    validate(retained, isCurrent);
+    if (!('serviceWorker' in navigator)) return reject('unsupported', 'Service Worker API is unavailable.');
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    validate(retained, isCurrent);
+    if (!registrations.includes(retained.registration)) {
+      return reject('stale-target', 'Refresh before managing this registration.');
+    }
+    const target = retained.registration.scope;
+    try {
+      await retained.registration.update();
+      return [{ target, outcome: 'applied', message: 'Update check completed. Activation is not guaranteed.' }];
+    } catch (error) {
+      return [{ target, outcome: 'failed', message: error instanceof Error ? error.message : String(error) }];
+    }
+  }
+  async function unsupported(): Promise<never> {
     return reject('unsupported', 'Worker actions are not enabled.');
   }
-  return { 'update-worker': { prepare, execute }, 'unregister-worker': { prepare, execute } };
+  return { 'update-worker': { prepare, execute: update }, 'unregister-worker': { prepare, execute: unsupported } };
 }

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** W1 code-complete (2026-10-21); W2–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1–W2 code-complete (2026-10-21); W3–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -94,14 +94,14 @@
 
 **Interfaces:** `handlers['update-worker'].execute(retained, isCurrent): Promise<ActionItem[]>`; успешно разрешившийся `update()` даёт item `applied`.
 
-- [ ] Написать `update calls the retained registration once`: после prepare выполнить execute; `expect(selected.update).toHaveBeenCalledTimes(1)`, другие registrations и unregister не вызваны.
-- [ ] Написать `update does not imply activation`: update resolve без изменения waiting/active/controller; item `applied` с message `Update check completed. Activation is not guaranteed.`; никаких искусственных изменений worker state.
-- [ ] Написать `execute revalidates before update`: после prepare заменить registration или любой captured slot, истечь срок либо вернуть false из isCurrent; ошибка stale target до вызова native API.
-- [ ] Написать `update failure is local`: rejected DOMException становится item `failed` с безопасной текстовой причиной; valid overview остаётся доступным.
-- [ ] Запустить `rtk pnpm test tests/workers/page-actions.test.ts` и проверить ожидаемые FAIL новых тестов.
-- [ ] Реализовать execute с повторным `getRegistrations()`, сравнением registration/slot references и `isCurrent()` непосредственно перед `registration.update()`; не ждать activation/controllerchange/ready.
-- [ ] После отправки API не превращать поздний navigation в утверждение «не выполнено»: publication и `outcome-unknown` контролирует foundation; не делать второй update.
-- [ ] Запустить тот же command; ожидается PASS, включая уже прошедшие prepare-тесты.
+- [x] Написать `update calls the retained registration once`: после prepare выполнить execute; `expect(selected.update).toHaveBeenCalledTimes(1)`, другие registrations и unregister не вызваны.
+- [x] Написать `update does not imply activation`: update resolve без изменения waiting/active/controller; item `applied` с message `Update check completed. Activation is not guaranteed.`; никаких искусственных изменений worker state.
+- [x] Написать `execute revalidates before update`: после prepare заменить registration или любой captured slot, истечь срок либо вернуть false из isCurrent; ошибка stale target до вызова native API.
+- [x] Написать `update failure is local`: rejected DOMException становится item `failed` с безопасной текстовой причиной; valid overview остаётся доступным.
+- [x] Запустить `rtk pnpm test tests/workers/page-actions.test.ts` и проверить ожидаемые FAIL новых тестов.
+- [x] Реализовать execute с повторным `getRegistrations()`, сравнением registration/slot references и `isCurrent()` непосредственно перед `registration.update()`; не ждать activation/controllerchange/ready.
+- [x] После отправки API не превращать поздний navigation в утверждение «не выполнено»: publication и `outcome-unknown` контролирует foundation; не делать второй update.
+- [x] Запустить тот же command; ожидается PASS, включая уже прошедшие prepare-тесты.
 
 ### W3: Unregister с корректной семантикой результата
 

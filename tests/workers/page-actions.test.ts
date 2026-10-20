@@ -87,3 +87,76 @@ describe('worker preparation', () => {
     await expect(handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id })).resolves.toHaveProperty('retained');
   });
 });
+
+
+describe('worker update', () => {
+  it('calls only the retained registration once without implying activation', async () => {
+    const { handlers, id, found } = await setup();
+    const active = found[1].active;
+    const prepared = await handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id });
+    const result = await handlers['update-worker']!.execute(prepared.retained, () => true);
+    expect(found[1].update).toHaveBeenCalledTimes(1);
+    expect(found[0].update).not.toHaveBeenCalled();
+    for (const row of found) expect(row.unregister).not.toHaveBeenCalled();
+    expect(found[1].active).toBe(active);
+    expect(found[1].waiting).toBeNull();
+    expect(navigator.serviceWorker.controller).toBeNull();
+    expect(result).toEqual([{ target: found[1].scope, outcome: 'applied', message: 'Update check completed. Activation is not guaranteed.' }]);
+  });
+
+  it.each(['registration', 'installing', 'waiting', 'active', 'expiry', 'current', 'navigation', 'refresh'] as const)('revalidates %s before native update', async change => {
+    const { handlers, id, found, context } = await setup();
+    const selected = found[1];
+    const prepared = await handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id });
+    if (change === 'registration') found[1] = registration(selected.scope);
+    if (['installing', 'waiting', 'active'].includes(change)) Object.assign(selected, { [change]: { ...selected.active } });
+    if (change === 'expiry') vi.setSystemTime(Date.now() + 300000);
+    if (change === 'navigation') location.href += '?new';
+    if (change === 'refresh') context.registrations.clear();
+    await expect(handlers['update-worker']!.execute(prepared.retained, () => change !== 'current'))
+      .rejects.toMatchObject({ kind: 'action-rejected', code: 'stale-target' });
+    expect(selected.update).not.toHaveBeenCalled();
+    expect(found[1].update).not.toHaveBeenCalled();
+  });
+
+  it.each(['slot', 'expiry', 'navigation', 'current'] as const)('rechecks %s after execute collection await', async change => {
+    const { handlers, id, found, getRegistrations } = await setup();
+    const prepared = await handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id });
+    let current = true;
+    getRegistrations.mockImplementationOnce(async () => {
+      if (change === 'slot') found[1].active = { ...found[1].active };
+      if (change === 'expiry') vi.setSystemTime(Date.now() + 300000);
+      if (change === 'navigation') location.href += '?new';
+      if (change === 'current') current = false;
+      return found;
+    });
+    await expect(handlers['update-worker']!.execute(prepared.retained, () => current)).rejects.toMatchObject({ code: 'stale-target' });
+    expect(found[1].update).not.toHaveBeenCalled();
+  });
+
+  it('reports a rejected native update locally and preserves overview handles', async () => {
+    const { handlers, id, found, context } = await setup();
+    const prepared = await handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id });
+    found[1].update.mockRejectedValueOnce(new DOMException('blocked <script>', 'SecurityError'));
+    await expect(handlers['update-worker']!.execute(prepared.retained, () => true)).resolves.toEqual([
+      { target: found[1].scope, outcome: 'failed', message: 'blocked <script>' },
+    ]);
+    expect(context.registrations.has(id)).toBe(true);
+    expect(found[1].update).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reinterpret late navigation as a pre-effect rejection or retry', async () => {
+    const { handlers, id, found } = await setup();
+    const prepared = await handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id });
+    found[1].update.mockImplementationOnce(async () => { location.href += '?new'; });
+    await expect(handlers['update-worker']!.execute(prepared.retained, () => true)).resolves.toMatchObject([{ outcome: 'applied' }]);
+    expect(found[1].update).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps unregister execute unsupported', async () => {
+    const { handlers, id, found } = await setup();
+    const prepared = await handlers['unregister-worker']!.prepare({ kind: 'unregister-worker', registrationId: id });
+    await expect(handlers['unregister-worker']!.execute(prepared.retained, () => true)).rejects.toMatchObject({ code: 'unsupported' });
+    expect(found[1].unregister).not.toHaveBeenCalled();
+  });
+});
