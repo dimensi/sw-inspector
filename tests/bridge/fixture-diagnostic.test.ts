@@ -27,7 +27,7 @@ it('explicit refresh reads external changes and a same-URL replacement without a
     return createContext({ crypto, location: { origin: 'https://fixture.test', href: 'https://fixture.test/' },
       navigator: { serviceWorker: { controller: null, getRegistrations: async () => mutable.registrations }, storage: { estimate: async () => ({}) } },
       caches: { keys: async () => mutable.names, open: async () => ({ keys: async () => [] }) },
-      setTimeout: () => 0, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) });
+      setTimeout: () => 0, clearTimeout: () => {}, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) });
   };
   let realm = makeRealm();
   const transport = createTransport(async (source) => [runInContext(source, realm), undefined], { getOrigin: () => 'https://fixture.test', pollIntervalMs: 0 });

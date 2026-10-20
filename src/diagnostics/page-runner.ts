@@ -1,4 +1,4 @@
-import { createPageContext, type PageContext } from '../bridge/page-context';
+import { createPageContext, type PageContext, type RetainedRegistration } from '../bridge/page-context';
 import type { InspectorCommand } from '../domain/commands';
 import type { SnapshotRecord } from '../cache/snapshot-types';
 import type {
@@ -89,6 +89,8 @@ async function boundedText(response: Response, full: boolean): Promise<CacheDeta
 
 async function overview(): Promise<Result<Overview>> {
   if (!context) return { ok: false, error: { code: 'invalid-command', message: 'Page context is required for overview' } };
+  const page = context.identity();
+  const retained = new Map<string, RetainedRegistration>();
   const warnings: string[] = [];
   const registrations: Registration[] = [];
   let controller: WorkerState | null = null;
@@ -96,13 +98,32 @@ async function overview(): Promise<Result<Overview>> {
     try {
       controller = workerState(navigator.serviceWorker.controller);
       const found = await navigator.serviceWorker.getRegistrations();
-      registrations.push(...found.map((registration) => ({
-        scope: registration.scope,
-        installing: workerState(registration.installing),
-        waiting: workerState(registration.waiting),
-        active: workerState(registration.active),
-      })));
+      const expiresAt = Date.now() + SNAPSHOT_TTL_MS;
+      for (const registration of found) {
+        const row: Registration = {
+          scope: registration.scope,
+          installing: workerState(registration.installing),
+          waiting: workerState(registration.waiting),
+          active: workerState(registration.active),
+        };
+        if (found.length <= 100) {
+          row.registrationId = crypto.randomUUID();
+          const workers: RetainedRegistration['workers'] = {};
+          for (const slot of ['active', 'waiting'] as const) {
+            const worker = registration[slot];
+            if (worker && row[slot]) {
+              const workerId = crypto.randomUUID();
+              row[slot].workerId = workerId;
+              workers[slot] = { workerId, worker };
+            }
+          }
+          retained.set(row.registrationId, { page: { ...page }, registration, expiresAt, workers });
+        }
+        registrations.push(row);
+      }
     } catch (error) {
+      retained.clear();
+      registrations.length = 0;
       warnings.push(`Service Worker: ${message(error)}`);
     }
   } else {
@@ -140,7 +161,23 @@ async function overview(): Promise<Result<Overview>> {
     warnings.push(`Storage estimate: ${message(error)}`);
   }
 
-  return { ok: true, value: { page: context.identity(), origin: location.origin, registrations, controller, caches: cacheSummaries, storage, warnings } };
+  if (!context.isCurrent(page)) {
+    return { ok: false, error: { code: 'stale-result', message: 'The inspected page changed before this overview returned' } };
+  }
+  context.replaceRegistrationCleanup(() => {});
+  context.registrations.clear();
+  for (const [id, record] of retained) context.registrations.set(id, record);
+  if (retained.size) {
+    const ids = [...retained.keys()];
+    const timer = setTimeout(() => {
+      for (const id of ids) {
+        const record = context.registrations.get(id);
+        if (record && record.expiresAt <= Date.now()) context.registrations.delete(id);
+      }
+    }, Math.max(0, retained.values().next().value!.expiresAt - Date.now()));
+    context.replaceRegistrationCleanup(() => clearTimeout(timer));
+  }
+  return { ok: true, value: { page, origin: location.origin, registrations, controller, caches: cacheSummaries, storage, warnings } };
 }
 
 async function listCacheKeys(cacheName: string): Promise<Result<CacheInventory>> {

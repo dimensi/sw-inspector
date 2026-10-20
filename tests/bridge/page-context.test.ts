@@ -14,6 +14,23 @@ function realm() {
 
 afterEach(() => vi.unstubAllGlobals());
 describe('page context', () => {
+  it('replaces registration cleanup and disposes only its current owner', () => {
+    const { factory, events } = realm();
+    const context = factory('inspector');
+    const first = vi.fn();
+    const second = vi.fn();
+    context.replaceRegistrationCleanup(first);
+    context.replaceRegistrationCleanup(second);
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).not.toHaveBeenCalled();
+    events.dispatchEvent(new Event('pagehide'));
+    events.dispatchEvent(new Event('pagehide'));
+    expect(first).toHaveBeenCalledOnce();
+    expect(second).toHaveBeenCalledOnce();
+    const late = vi.fn();
+    context.replaceRegistrationCleanup(late);
+    expect(late).toHaveBeenCalledOnce();
+  });
   it('same_document_reuses_identity_but_fresh_realm_does_not', () => {
     const first = realm();
     const context = first.factory('inspector-one');

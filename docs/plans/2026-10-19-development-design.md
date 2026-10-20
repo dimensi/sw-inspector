@@ -1,6 +1,6 @@
 # Развитие SW Inspector: согласованные границы для реализации
 
-Дата: 2026-10-19. **Статус на 2026-10-21: внутренний фундамент 00/A1–A4 code-complete; 01/C1–C3 реализованы; следующая задача 01/C4 acceptance, остальные feature tasks остаются planned.** Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)); ADR 0004 принят для confirmed selected namespace, fixed-list batch и retained-request entry deletion; native C2 Cancel/batch-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c2-user-reported-native-safari-acceptance--2026-10-21)); native C1 Cancel/single-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); остальные native проверки открыты. Запрос пользователя: очистка кеша, управление SW, Web App Manifest, отправка и приём сообщений; планы должны снимать архитектурные догадки с небольших моделей. UI остаётся английским, документы — русскими.
+Дата: 2026-10-19. **Статус на 2026-10-21: внутренний фундамент 00/A1–A4 code-complete; 01/C1–C3 реализованы; 02/W1 code-complete; следующая задача реализации 02/W2; native 01/C4 acceptance остаётся открытой.** Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)); ADR 0004 принят для confirmed selected namespace, fixed-list batch и retained-request entry deletion; native C2 Cancel/batch-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c2-user-reported-native-safari-acceptance--2026-10-21)); native C1 Cancel/single-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); остальные native проверки открыты. Запрос пользователя: очистка кеша, управление SW, Web App Manifest, отправка и приём сообщений; планы должны снимать архитектурные догадки с небольших моделей. UI остаётся английским, документы — русскими.
 
 ## Выбранный подход
 
@@ -29,6 +29,7 @@
 ```ts
 type WorkerSlot = 'active' | 'waiting';
 type RetainedRegistration = {
+  page: PageIdentity;
   registration: ServiceWorkerRegistration;
   expiresAt: number;
   workers: Partial<Record<WorkerSlot, { workerId: string; worker: ServiceWorker }>>;
@@ -37,12 +38,15 @@ interface PageContext {
   identity(): PageIdentity;
   isCurrent(expected: PageIdentity): boolean;
   onDispose(cleanup: () => void): void;
+  replaceRegistrationCleanup(cleanup: () => void): void;
   registrations: Map<string, RetainedRegistration>;
   actions: Map<string, unknown>; // internal records owned by control runner
   manifests: Map<string, unknown>; // records owned by manifest runner
   messages: Map<string, unknown>; // records owned by message runner
 }
 ```
+
+`replaceRegistrationCleanup` владеет одним cleanup для коллекции регистраций: замена синхронно вызывает предыдущий cleanup, disposal вызывает текущий один раз; после закрытия новый cleanup исполняется сразу. Это ограничивает overview одним TTL timer даже при пересоздании сериализуемой фабрики.
 
 Контекст и все retained browser objects живут только в inspected document. Не сериализовать их в панель. `unknown` в локальных registry не разрешает unsafe casts на wire: каждый владелец задаёт свой внутренний тип и проверяет получаемые commands. Registry не сохраняется в localStorage/extension storage.
 

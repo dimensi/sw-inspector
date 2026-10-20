@@ -24,9 +24,10 @@ export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: { code: DiagnosticErrorCode; message: string } };
 
-export type WorkerState = { scriptURL: string; state: string };
+export type WorkerState = { workerId?: string; scriptURL: string; state: string };
 
 export type Registration = {
+  registrationId?: string;
   scope: string;
   installing: WorkerState | null;
   waiting: WorkerState | null;

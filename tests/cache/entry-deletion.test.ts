@@ -4,7 +4,7 @@ import type { PageContext } from '../../src/bridge/page-context';
 
 function fixture() {
   const page = { documentId: 'doc', origin: 'https://a.test', url: 'https://a.test/' };
-  const context: PageContext = { identity: () => page, isCurrent: () => true, onDispose: () => {}, actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
+  const context: PageContext = { identity: () => page, isCurrent: () => true, replaceRegistrationCleanup: () => {}, onDispose: () => {}, actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
   const request = new Request('https://a.test/a?v=1', { headers: { 'Accept-Language': 'en' } });
   const cache = { delete: vi.fn(async () => true) };
   const snapshot = { cacheName: 'a', cache, requests: [request], expiresAt: Date.now() + 60_000 };

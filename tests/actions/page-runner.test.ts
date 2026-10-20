@@ -15,7 +15,7 @@ function fixture(handlers?: ActionHandlers) {
   let page = { documentId: 'doc', origin: 'https://a.test', url: 'https://a.test/' };
   let disposed = false;
   const cleanups: (() => void)[] = [];
-  const context: PageContext = { identity: () => ({ ...page }), isCurrent: p => !disposed && JSON.stringify(p) === JSON.stringify(page), onDispose: f => cleanups.push(f), actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
+  const context: PageContext = { identity: () => ({ ...page }), isCurrent: p => !disposed && JSON.stringify(p) === JSON.stringify(page), replaceRegistrationCleanup: () => {}, onDispose: f => cleanups.push(f), actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
   const prepare = vi.fn(async () => ({ summary: ['Delete cache'], retained: { name: 'cache' } }));
   const execute = vi.fn(async () => [{ target: 'cache', outcome: 'applied' as const }]);
   const run = createControlRunner(context, handlers ?? { 'delete-cache': { prepare, execute } });

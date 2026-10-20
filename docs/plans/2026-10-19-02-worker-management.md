@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** запланировано, не реализовано. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1 code-complete (2026-10-21); W2–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -19,7 +19,7 @@
 - Native eval остаётся в devtools_page; panel использует relay, JSON start/poll и существующие `devtools` + `activeTab`.
 - `PageIdentity = {documentId, origin, url}`; `context.identity()` синхронный, `context.isCurrent(expected)` сравнивает все три поля.
 - `context.registrations: Map<string, RetainedRegistration>` принадлежит 00; максимум 100 регистраций, lifetime 5 минут; active/waiting handles максимум 200.
-- `RetainedRegistration = {registration: ServiceWorkerRegistration; expiresAt: number; workers: {active?: {workerId: string; worker: ServiceWorker}; waiting?: {workerId: string; worker: ServiceWorker}}}`.
+- `RetainedRegistration = {page: PageIdentity; registration: ServiceWorkerRegistration; expiresAt: number; workers: {active?: {workerId: string; worker: ServiceWorker}; waiting?: {workerId: string; worker: ServiceWorker}}}`.
 - Каждый полный overview атомарно заменяет retained handles; свыше 100 регистраций диагностика работает, management недоступен для всего снимка.
 - TicketTTL 30 секунд, один pending ticket, эффекты последовательно на Inspector/page; общий ledger 5 минут / максимум 100 операций.
 - После commit attempt timeout/abort/malformed/missing reply означает `outcome-unknown`; повторной отправки нет, cancellation не обещает остановить page-side API.
@@ -67,26 +67,26 @@
 
 **Files:** создать `src/workers/page-actions.ts`, `tests/workers/page-actions.test.ts`; изменить `src/domain/types.ts`, `src/diagnostics/page-runner.ts`, `tests/diagnostics/page-runner.test.ts`; потреблять PageContext/ActionHandlers из 00.
 
-**Interfaces:** `createWorkerActions(context: PageContext): ActionHandlers`; внутри фабрики private retained record содержит kind, page, registrationId, registration, expiresAt и captured installing/waiting/active ссылки.
+**Interfaces:** W1 уточняет общий `RetainedRegistration` обязательным `page: PageIdentity` исходного overview и добавляет `PageContext.replaceRegistrationCleanup(cleanup: () => void): void` с одним private cleanup slot; replacement/disposal отменяет предыдущий/текущий timer. `createWorkerActions(context: PageContext): ActionHandlers`; внутри фабрики private retained record содержит kind, page, registrationId, registration, expiresAt и captured installing/waiting/active ссылки.
 `Registration.registrationId?: string`, `WorkerState.workerId?: string`; `createPageRunner(snapshotRegistryKey?, context?)` из 00 сохраняет сигнатуру, production передаёт context; overview теперь атомарно публикует descriptors и соответствующие retained references.
 
-- [ ] Написать `overview retains exact registration and worker references`: два разных registration объекта с одинаковым scriptURL дают разные registrationId/workerId; `expect(context.registrations.get(id)?.registration).toBe(original)` и active/waiting `.worker` равен исходному объекту; installing/controller не получают отдельные action handles.
-- [ ] Написать `overview refresh replaces handles and bounds management`: второй overview удаляет все старые IDs; при 100 регистрациях Map.size=100, worker refs ≤200, expiresAt=now+300000; при 101 Map.size=0, все 101 diagnostic rows сохранены и ни один не содержит action IDs.
-- [ ] Написать `expired overview releases retained objects`: fake timers на 300000 ms удаляют expired records; старый cleanup не удаляет IDs нового overview; context dispose отменяет его timer и освобождает references.
-- [ ] Добавить `overview collection failure clears old handles`: getRegistrations rejection не оставляет доступными прежние IDs; overview сохраняет существующую warning/partial семантику. TTL expiry не превращает строку диагностики в отсутствующую регистрацию.
-- [ ] Запустить `rtk pnpm test tests/diagnostics/page-runner.test.ts`; новые assertions должны падать до реализации.
-- [ ] Добавить optional поля types; внутри реального overview собрать новый локальный Map и descriptors с crypto.randomUUID IDs только при count≤100. После identity check синхронно без await очистить context.registrations и заполнить подготовленными records; expiresAt один на коллекцию, 300000 ms. При overlimit/failure очистить registry и не выдавать IDs, сохраняя diagnostic data/warnings.
-- [ ] Поставить ограниченный cleanup timer на TTL этой коллекции: удалять только её IDs с истёкшим expiresAt; зарегистрировать отмену timer через `context.onDispose`. Проверка срока в prepare/execute обязательна независимо от точности timer.
-- [ ] Запустить тот же command; ожидается PASS, включая старые overview/empty-origin/no-ready тесты. Сохранённые browser objects не попадают в JSON response/export.
+- [x] Написать `overview retains exact registration and worker references`: два разных registration объекта с одинаковым scriptURL дают разные registrationId/workerId; `expect(context.registrations.get(id)?.registration).toBe(original)` и active/waiting `.worker` равен исходному объекту; installing/controller не получают отдельные action handles.
+- [x] Написать `overview refresh replaces handles and bounds management`: второй overview удаляет все старые IDs; при 100 регистрациях Map.size=100, worker refs ≤200, expiresAt=now+300000; при 101 Map.size=0, все 101 diagnostic rows сохранены и ни один не содержит action IDs.
+- [x] Написать `expired overview releases retained objects`: fake timers на 300000 ms удаляют expired records; старый cleanup не удаляет IDs нового overview; context dispose отменяет его timer и освобождает references.
+- [x] Добавить `overview collection failure clears old handles`: getRegistrations rejection не оставляет доступными прежние IDs; overview сохраняет существующую warning/partial семантику. TTL expiry не превращает строку диагностики в отсутствующую регистрацию.
+- [x] Запустить `rtk pnpm test tests/diagnostics/page-runner.test.ts`; новые assertions должны падать до реализации.
+- [x] Добавить optional поля types; внутри реального overview собрать новый локальный Map и descriptors с crypto.randomUUID IDs только при count≤100. После identity check синхронно без await очистить context.registrations и заполнить подготовленными records; expiresAt один на коллекцию, 300000 ms. При overlimit/failure очистить registry и не выдавать IDs, сохраняя diagnostic data/warnings.
+- [x] Поставить ограниченный cleanup timer на TTL этой коллекции: удалять только её IDs с истёкшим expiresAt; зарегистрировать отмену timer через `context.replaceRegistrationCleanup` (один owner на контекст; замена отменяет предыдущий timer, dispose освобождает текущий). Проверка срока в prepare/execute обязательна независимо от точности timer.
+- [x] Запустить тот же command; ожидается PASS, включая старые overview/empty-origin/no-ready тесты. Сохранённые browser objects не попадают в JSON response/export.
 
-- [ ] Написать тест `prepare retains the selected registration without effects`: два scope, вызвать prepare второго ID; `expect(first.update).not.toHaveBeenCalled()`, `expect(second.update).not.toHaveBeenCalled()`, `expect(second.unregister).not.toHaveBeenCalled()`; summary содержит второй scope и текущую страницу.
-- [ ] Написать `prepare rejects missing expired and replaced targets`: неизвестный ID, `expiresAt <= Date.now()`, новый объект с тем же scope, active/waiting объект с тем же scriptURL; ожидать типизированный stale-target отказ из 00 и ноль update/unregister.
-- [ ] Написать `prepare does not wait for ready`: getter `navigator.serviceWorker.ready` бросает; валидный prepare по `getRegistrations()` всё равно завершается.
-- [ ] Запустить `rtk pnpm test tests/workers/page-actions.test.ts`; убедиться, что новый тест падает по отсутствующему поведению.
-- [ ] Реализовать prepare: проверить identity/срок, получить retained record, вызвать `getRegistrations()`, проверить `includes(retained.registration)` и совпадение actual active/waiting с retained workers; отсутствие slot означает `null`.
-- [ ] После await повторно проверить `context.isCurrent(page)` и срок; захватить installing/waiting/active ссылки для commit, без поиска registration по scope/scriptURL.
-- [ ] Зафиксировать summary update: `Check for update`, scope, `This may download and install a new worker. Activation is not guaranteed.`; unregister: `Unregister`, scope, `Existing pages may remain controlled. Cache Storage is unchanged.`
-- [ ] Запустить тот же test command; ожидается PASS. Проверить, что `getRegistrations()` failure не выдаётся за пустой список.
+- [x] Написать тест `prepare retains the selected registration without effects`: два scope, вызвать prepare второго ID; `expect(first.update).not.toHaveBeenCalled()`, `expect(second.update).not.toHaveBeenCalled()`, `expect(second.unregister).not.toHaveBeenCalled()`; summary содержит второй scope и текущую страницу.
+- [x] Написать `prepare rejects missing expired and replaced targets`: неизвестный ID, `expiresAt <= Date.now()`, новый объект с тем же scope, active/waiting объект с тем же scriptURL; ожидать типизированный stale-target отказ из 00 и ноль update/unregister.
+- [x] Написать `prepare does not wait for ready`: getter `navigator.serviceWorker.ready` бросает; валидный prepare по `getRegistrations()` всё равно завершается.
+- [x] Запустить `rtk pnpm test tests/workers/page-actions.test.ts`; убедиться, что новый тест падает по отсутствующему поведению.
+- [x] Реализовать prepare: проверить identity/срок, получить retained record, вызвать `getRegistrations()`, проверить `includes(retained.registration)` и совпадение actual active/waiting с retained workers; отсутствие slot означает `null`.
+- [x] После await повторно проверить `context.isCurrent(page)` и срок; захватить installing/waiting/active ссылки для commit, без поиска registration по scope/scriptURL.
+- [x] Зафиксировать summary update: `Check for update`, scope, `This may download and install a new worker. Activation is not guaranteed.`; unregister: `Unregister`, scope, `Existing pages may remain controlled. Cache Storage is unchanged.`
+- [x] Запустить тот же test command; ожидается PASS. Проверить, что `getRegistrations()` failure не выдаётся за пустой список.
 
 ### W2: Update только сохранённой регистрации
 

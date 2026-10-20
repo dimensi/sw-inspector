@@ -6,7 +6,7 @@ import type { ActionTicket } from '../../src/domain/actions';
 function fixture(names = ['a', 'b', 'c']) {
   const page = { documentId: 'doc', origin: 'https://a.test', url: 'https://a.test/' };
   let current = true;
-  const context: PageContext = { identity: () => page, isCurrent: () => current, onDispose: () => {}, actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
+  const context: PageContext = { identity: () => page, isCurrent: () => current, replaceRegistrationCleanup: () => {}, onDispose: () => {}, actions: new Map(), registrations: new Map(), manifests: new Map(), messages: new Map() };
   const effects = { open: vi.fn(), fetch: vi.fn(), update: vi.fn(), unregister: vi.fn() };
   const storage = { keys: vi.fn(async () => names), delete: vi.fn(async (_name: string) => true), open: effects.open };
   vi.stubGlobal('caches', storage); vi.stubGlobal('fetch', effects.fetch);

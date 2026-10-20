@@ -49,6 +49,119 @@ function value<T>(result: Result<T>): T {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('page diagnostic runner', () => {
+  function worker() { return { scriptURL: 'https://app.test/sw.js', state: 'activated' }; }
+  function registration() { return { scope: 'https://app.test/scope/', active: worker(), waiting: worker(), installing: worker() }; }
+  function overviewRunner(found: unknown[]) {
+    installOrigin({}, { registrations: found, controller: worker() });
+    const context = createPageContext(`context-${crypto.randomUUID()}`);
+    const run = createPageRunner(undefined, context);
+    return { context, read: async () => value(await run({ type: 'overview' }) as Result<Overview>) };
+  }
+
+  it('overview retains exact registration and worker references', async () => {
+    const found = [registration(), registration()];
+    const { context, read } = overviewRunner(found);
+    const result = await read();
+    expect(new Set(result.registrations.map(row => row.registrationId)).size).toBe(2);
+    for (const [index, row] of result.registrations.entries()) {
+      expect(row.registrationId).toEqual(expect.any(String));
+      const retained = context.registrations.get(row.registrationId!);
+      expect(retained?.registration).toBe(found[index]);
+      for (const slot of ['active', 'waiting'] as const) {
+        expect(retained?.workers[slot]?.worker).toBe(found[index][slot]);
+        expect(row[slot]?.workerId).toBe(retained?.workers[slot]?.workerId);
+      }
+      expect(row.installing).not.toHaveProperty('workerId');
+    }
+    expect(new Set(result.registrations.flatMap(row => [row.active?.workerId, row.waiting?.workerId])).size).toBe(4);
+    expect(result.controller).not.toHaveProperty('workerId');
+  });
+
+  it('overview refresh replaces handles and bounds management', async () => {
+    const found = Array.from({ length: 100 }, registration);
+    const { context, read } = overviewRunner(found);
+    const now = Date.now();
+    const first = await read();
+    expect(context.registrations.size).toBe(100);
+    expect([...context.registrations.values()].flatMap(row => Object.values(row.workers))).toHaveLength(200);
+    expect([...context.registrations.values()].every(row => row.expiresAt >= now + 300000)).toBe(true);
+    await read();
+    expect(first.registrations.every(row => !context.registrations.has(row.registrationId!))).toBe(true);
+    found.push(registration());
+    const overlimit = await read();
+    expect(overlimit.registrations).toHaveLength(101);
+    expect(context.registrations.size).toBe(0);
+    expect(overlimit.registrations.every(row => !row.registrationId && !row.active?.workerId && !row.waiting?.workerId)).toBe(true);
+  });
+
+  it('expired overview releases retained objects without deleting newer handles', async () => {
+    vi.useFakeTimers();
+    try {
+      const { context, read } = overviewRunner([registration()]);
+      await read();
+      expect([...context.registrations.values()][0].expiresAt).toBe(Date.now() + 300000);
+      await vi.advanceTimersByTimeAsync(100000);
+      const fresh = await read();
+      await vi.advanceTimersByTimeAsync(200000);
+      expect(context.registrations.has(fresh.registrations[0].registrationId!)).toBe(true);
+      await vi.advanceTimersByTimeAsync(100000);
+      expect(context.registrations.size).toBe(0);
+      expect(fresh.registrations).toHaveLength(1);
+      await read();
+      const dispose = vi.mocked(globalThis.addEventListener).mock.calls.find(call => call[0] === 'pagehide')![1] as () => void;
+      const timers = vi.getTimerCount();
+      dispose();
+      expect(context.registrations.size).toBe(0);
+      expect(vi.getTimerCount()).toBeLessThan(timers);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('keeps one cleanup owner across reconstructed overview runners', async () => {
+    vi.useFakeTimers();
+    try {
+      const { context } = overviewRunner([registration()]);
+      const onDispose = vi.spyOn(context, 'onDispose');
+      for (let i = 0; i < 20; i += 1) {
+        await createPageRunner(undefined, context)({ type: 'overview' });
+        expect(vi.getTimerCount()).toBe(1);
+      }
+      expect(onDispose).not.toHaveBeenCalled();
+      navigator.serviceWorker.getRegistrations = vi.fn().mockRejectedValue(new Error('denied'));
+      await createPageRunner(undefined, context)({ type: 'overview' });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('expires collection at its original deadline after slow overview reads', async () => {
+    vi.useFakeTimers();
+    try {
+      const { context, read } = overviewRunner([registration()]);
+      navigator.storage.estimate = vi.fn(async () => { vi.setSystemTime(Date.now() + 100000); return {}; });
+      await read();
+      await vi.advanceTimersByTimeAsync(199999);
+      expect(context.registrations.size).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(context.registrations.size).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('overview collection failure clears old handles', async () => {
+    const { context, read } = overviewRunner([registration()]);
+    await read();
+    navigator.serviceWorker.getRegistrations = vi.fn().mockRejectedValue(new Error('denied'));
+    const result = await read();
+    expect(context.registrations.size).toBe(0);
+    expect(result.registrations).toEqual([]);
+    expect(result.warnings).toContain('Service Worker: denied');
+  });
+
+  it('does not publish overview handles after the document changes', async () => {
+    const { context, read } = overviewRunner([registration()]);
+    navigator.storage.estimate = vi.fn(async () => { location.href += 'changed'; return {}; });
+    await expect(read()).rejects.toThrow('The inspected page changed');
+    expect(context.registrations.size).toBe(0);
+  });
+
   it('expired_preview_snapshot_requires_refresh without prolonging TTL', async () => {
     vi.useFakeTimers();
     try {

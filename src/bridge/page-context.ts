@@ -2,6 +2,7 @@ import type { PageIdentity } from '../domain/types';
 
 export type WorkerSlot = 'active' | 'waiting';
 export type RetainedRegistration = {
+  page: PageIdentity;
   registration: ServiceWorkerRegistration;
   expiresAt: number;
   workers: Partial<Record<WorkerSlot, { workerId: string; worker: ServiceWorker }>>;
@@ -10,6 +11,7 @@ export interface PageContext {
   identity(): PageIdentity;
   isCurrent(expected: PageIdentity): boolean;
   onDispose(cleanup: () => void): void;
+  replaceRegistrationCleanup(cleanup: () => void): void;
   registrations: Map<string, RetainedRegistration>;
   actions: Map<string, unknown>;
   manifests: Map<string, unknown>;
@@ -25,6 +27,7 @@ export function createPageContext(registryKey: string): PageContext {
 
   const documentId = crypto.randomUUID();
   const cleanups = new Set<() => void>();
+  let registrationCleanup: (() => void) | undefined;
   const stored: StoredContext = { context: undefined!, closed: false };
   const context: PageContext = {
     identity: () => ({ documentId, origin: location.origin, url: location.href }),
@@ -37,12 +40,20 @@ export function createPageContext(registryKey: string): PageContext {
       if (stored.closed) cleanup();
       else cleanups.add(cleanup);
     },
+    replaceRegistrationCleanup(cleanup) {
+      const previousCleanup = registrationCleanup;
+      registrationCleanup = undefined;
+      previousCleanup?.();
+      if (stored.closed) cleanup();
+      else registrationCleanup = cleanup;
+    },
     registrations: new Map(), actions: new Map(), manifests: new Map(), messages: new Map(),
   };
   function dispose() {
     if (stored.closed) return;
     stored.closed = true;
     globalThis.removeEventListener('pagehide', dispose);
+    context.replaceRegistrationCleanup(() => {});
     context.registrations.clear();
     context.actions.clear();
     context.manifests.clear();

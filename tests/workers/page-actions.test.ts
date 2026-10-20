@@ -1,0 +1,89 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createControlRunner } from '../../src/actions/page-runner';
+import { createPageContext } from '../../src/bridge/page-context';
+import { createPageRunner } from '../../src/diagnostics/page-runner';
+import { createWorkerActions } from '../../src/workers/page-actions';
+import type { Overview, Result } from '../../src/domain/types';
+
+function registration(scope: string) {
+  return { scope, installing: null, waiting: null,
+    active: { scriptURL: 'https://app.test/sw.js', state: 'activated' },
+    update: vi.fn(), unregister: vi.fn() };
+}
+async function setup() {
+  vi.stubGlobal('addEventListener', vi.fn());
+  vi.stubGlobal('removeEventListener', vi.fn());
+  vi.stubGlobal('location', { origin: 'https://app.test', href: 'https://app.test/page' });
+  const found = [registration('https://app.test/first/'), registration('https://app.test/second/')];
+  const getRegistrations = vi.fn(async () => found);
+  vi.stubGlobal('navigator', { serviceWorker: { controller: null, getRegistrations,
+    get ready() { throw new Error('must not await ready'); } } });
+  vi.stubGlobal('caches', { keys: async () => [] });
+  const context = createPageContext(`workers-${crypto.randomUUID()}`);
+  const result = await createPageRunner(undefined, context)({ type: 'overview' }) as Result<Overview>;
+  if (!result.ok) throw new Error(result.error.message);
+  const id = result.value.registrations[1].registrationId!;
+  const handlers = createWorkerActions(context);
+  return { found, context, id, handlers, getRegistrations };
+}
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
+
+describe('worker preparation', () => {
+  it.each(['update-worker', 'unregister-worker'] as const)('prepare retains selected registration without effects for %s', async kind => {
+    const { found, id, handlers } = await setup();
+    const prepared = await handlers[kind]!.prepare({ kind, registrationId: id });
+    expect(prepared.retained).toMatchObject({ registrationId: id, registration: found[1] });
+    expect(prepared.summary).toContain(found[1].scope);
+    expect(prepared.summary).toContain('https://app.test/page');
+    expect(prepared.summary).toContain(kind === 'update-worker'
+      ? 'This may download and install a new worker. Activation is not guaranteed.'
+      : 'Existing pages may remain controlled. Cache Storage is unchanged.');
+    for (const row of found) { expect(row.update).not.toHaveBeenCalled(); expect(row.unregister).not.toHaveBeenCalled(); }
+  });
+
+  it.each(['missing', 'expired', 'registration', 'active', 'waiting'] as const)('rejects %s target without effects', async replacement => {
+    const { found, context, id, handlers } = await setup();
+    let target = id;
+    if (replacement === 'missing') target = 'unknown';
+    if (replacement === 'expired') context.registrations.get(id)!.expiresAt = Date.now();
+    if (replacement === 'registration') found[1] = registration(found[1].scope);
+    if (replacement === 'active') found[1].active = { ...found[1].active };
+    if (replacement === 'waiting') Object.assign(found[1], { waiting: { ...found[1].active } });
+    await expect(handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: target }))
+      .rejects.toMatchObject({ kind: 'action-rejected', code: 'stale-target' });
+    for (const row of found) { expect(row.update).not.toHaveBeenCalled(); expect(row.unregister).not.toHaveBeenCalled(); }
+  });
+
+  it.each(['navigation', 'expiry', 'refresh'] as const)('rechecks %s after collection await', async change => {
+    const { context, found, id, handlers, getRegistrations } = await setup();
+    getRegistrations.mockImplementationOnce(async () => {
+      if (change === 'navigation') location.href += '?new';
+      if (change === 'expiry') context.registrations.get(id)!.expiresAt = Date.now();
+      if (change === 'refresh') context.registrations.clear();
+      return found;
+    });
+    await expect(handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id }))
+      .rejects.toMatchObject({ code: 'stale-target' });
+    expect(found[1].update).not.toHaveBeenCalled();
+  });
+
+  it('rejects overview handles from a previous SPA URL through the control runner', async () => {
+    const { context, id, handlers, found } = await setup();
+    location.href += '?new';
+    const run = createControlRunner(context, handlers);
+    await expect(run({ type: 'prepare-action', expectedPage: context.identity(),
+      intent: { kind: 'update-worker', registrationId: id } })).resolves.toMatchObject({ ok: false, error: { code: 'stale-target' } });
+    for (const row of found) { expect(row.update).not.toHaveBeenCalled(); expect(row.unregister).not.toHaveBeenCalled(); }
+  });
+
+  it('does not treat getRegistrations failure as absence', async () => {
+    const { id, handlers, getRegistrations } = await setup();
+    getRegistrations.mockRejectedValueOnce(new Error('denied'));
+    await expect(handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id })).rejects.toThrow('denied');
+  });
+
+  it('does not wait for ready', async () => {
+    const { id, handlers } = await setup();
+    await expect(handlers['update-worker']!.prepare({ kind: 'update-worker', registrationId: id })).resolves.toHaveProperty('retained');
+  });
+});
