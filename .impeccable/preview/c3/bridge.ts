@@ -60,7 +60,9 @@ window.c3ready = new Promise<void>(resolve => frame.onload = async () => {
 export const evaluateInspectedWindow = async source => {
   await window.c3ready;
   window.c3calls.push(source);
+  if (window.c3holdInventory && source.includes('"type":"list-cache-keys"')) await new Promise<void>(resolve => { window.c3releaseInventory = resolve; });
   if (window.c3holdPrepare && source.includes('"type":"prepare-action"')) await new Promise<void>(resolve => { window.c3releasePrepare = resolve; });
+  if (window.c3inventoryError && source.includes('"type":"list-cache-keys"')) return [null, { isException: true, value: 'Fixture inventory read rejected' }];
   if (window.c3holdContext && source.includes('"type":"page-context"')) await new Promise<void>(resolve => { window.c3releaseContext = resolve; });
   if (window.c3overviewError && source.includes('"type":"overview"')) return [null, { isException: true, value: 'Fixture overview read rejected' }];
   try {

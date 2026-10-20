@@ -26,6 +26,8 @@
   let lastUpdated = $state<string | null>(null);
   let overview = $state<Overview | null>(null);
   let selectedInventory = $state<CacheInventory | null>(null);
+  let staleInventorySnapshotId = $state<string | null>(null);
+  const inventoryStale = $derived(!!selectedInventory && selectedInventory.snapshotId === staleInventorySnapshotId);
   let selectedDetails = $state<CacheDetails | null>(null);
   let selectedRequestKey = $state<string | null>(null);
   let measurements = $state<CacheMeasurement[]>([]);
@@ -85,6 +87,19 @@
       if (!expectedPage) return;
       const navigation = navigationGeneration;
       const actionContext = actionContextGeneration;
+      if (receipt.kind === 'delete-cache-entry' && entryActionCache
+        && receipt.items.some(item => item.outcome === 'applied' || item.outcome === 'absent')) {
+        measurements = measurements.filter(item => item.cacheName !== entryActionCache);
+        if (selectedInventory?.cacheName === entryActionCache) {
+          staleInventorySnapshotId = selectedInventory.snapshotId;
+          detailsGeneration += 1;
+          measurementController?.abort();
+          measurementController = null;
+          working = '';
+          selectedDetails = null;
+          selectedRequestKey = null;
+        }
+      }
       const context = await transport.invoke<PageIdentity>({ type: 'page-context' });
       if (navigation !== navigationGeneration || actionContext !== actionContextGeneration) return;
       if (!context.ok) { inspectionError = context.error.message; return; }
@@ -100,7 +115,6 @@
         measurementController?.abort();
         measurementController = null;
         working = '';
-        selectedInventory = null;
         selectedDetails = null;
         selectedRequestKey = null;
         operationError = null;
@@ -114,6 +128,7 @@
           selectedInventory = result.value;
           if (overview) overview = { ...overview, caches: overview.caches.map(item => item.name === cacheName ? { ...item, entries: result.value.totalEntries, partial: result.value.partial } : item) };
         } else if (result.error.code === 'cache-not-found') {
+          selectedInventory = null;
           view = 'caches';
           if (overview) overview = { ...overview, caches: overview.caches.filter(item => item.name !== cacheName) };
         } else operationError = { area: 'cache', message: result.error.message };
@@ -169,6 +184,7 @@
   }
 
   function navigateRequests(event: KeyboardEvent, index: number) {
+    if (inventoryStale) return;
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? visibleEntries.length - 1
@@ -248,7 +264,7 @@
   }
 
   async function showDetails(requestKey: string, preview = false, fullPreview = false) {
-    if (!selectedInventory) return;
+    if (!selectedInventory || inventoryStale) return;
     if (selectedRequestKey !== requestKey) resetActions();
     const navigation = navigationGeneration;
     const inventory = selectedInventory;
@@ -270,7 +286,7 @@
   }
 
   async function measure() {
-    if (!selectedInventory) return;
+    if (!selectedInventory || inventoryStale) return;
     measurementController?.abort();
     const controller = new AbortController();
     measurementController = controller;
@@ -481,7 +497,7 @@
         </div>
 
       {:else if view === 'cache'}
-        <div class="pane-toolbar cache-toolbar"><h1 title={requestedCache}>{requestedCache}</h1><span class="secondary">{selectedInventory ? `${selectedInventory.totalEntries} keys` : 'Loading…'}</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-cache', cacheName: requestedCache }); }} disabled={!overview?.page || !selectedInventory || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete cache…</button><button onclick={measure} disabled={!selectedInventory || working.startsWith('measure:')}>{working.startsWith('measure:') ? 'Measuring…' : 'Measure bodies'}</button>{#if working.startsWith('measure:')}<button onclick={stopMeasurement}>Stop updates</button>{/if}</div>
+        <div class="pane-toolbar cache-toolbar"><h1 title={requestedCache}>{requestedCache}</h1><span class="secondary">{selectedInventory ? `${selectedInventory.totalEntries} keys` : 'Loading…'}</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-cache', cacheName: requestedCache }); }} disabled={!overview?.page || !selectedInventory || inventoryStale || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete cache…</button><button onclick={measure} disabled={!selectedInventory || inventoryStale || working.startsWith('measure:')}>{working.startsWith('measure:') ? 'Measuring…' : 'Measure bodies'}</button>{#if working.startsWith('measure:')}<button onclick={stopMeasurement}>Stop updates</button>{/if}</div>
         {@render actionResult()}
         {#if operationError?.area === 'cache' || operationError?.area === 'measure'}<p class="notice error" role="alert">{operationError.message}</p>{/if}
         {#if selectedInventory?.partial}<p class="notice warning">Partial inventory: first 1,500 keys shown.</p>{/if}
@@ -491,11 +507,11 @@
             <div class="table-scroll">
               <table class="data-table request-table"><thead><tr><th scope="col" class="index-column">#</th><th scope="col">Request URL</th><th scope="col" class="method-column">Method</th><th scope="col" class="mode-column">Mode</th></tr></thead><tbody>
                 {#each visibleEntries as entry, index (entry.requestKey)}
-                  <tr class:selected={selectedRequestKey === entry.requestKey}><td class="number-cell">{index + 1}</td><td><button class="cell-button request-button" title={entry.url} aria-label={`${entry.method} ${entry.url}`} aria-pressed={selectedRequestKey === entry.requestKey} onclick={() => showDetails(entry.requestKey)} onkeydown={(event) => navigateRequests(event, index)}><Icon name="file" size={12} /><span>{requestPath(entry.url)}</span></button></td><td class="mono">{entry.method}</td><td class="secondary">{entry.mode ?? '—'}</td></tr>
+                  <tr class:selected={selectedRequestKey === entry.requestKey}><td class="number-cell">{index + 1}</td><td><button class="cell-button request-button" disabled={inventoryStale} title={entry.url} aria-label={`${entry.method} ${entry.url}`} aria-pressed={selectedRequestKey === entry.requestKey} onclick={() => showDetails(entry.requestKey)} onkeydown={(event) => navigateRequests(event, index)}><Icon name="file" size={12} /><span>{requestPath(entry.url)}</span></button></td><td class="mono">{entry.method}</td><td class="secondary">{entry.mode ?? '—'}</td></tr>
                 {:else}<tr><td colspan="4" class="table-empty">{working.startsWith('cache:') ? 'Loading request keys…' : cacheQuery ? 'No matching request keys.' : 'This cache has no visible keys.'}</td></tr>{/each}
               </tbody></table>
             </div>
-            <div class="table-footer">{selectedInventory?.partial ? 'Partial inventory' : 'Cached requests'}<span class="toolbar-space"></span><span>Metadata only</span></div>
+            <div class="table-footer">{inventoryStale ? 'Previous keys · Refresh required before selection' : selectedInventory?.partial ? 'Partial inventory' : 'Cached requests'}<span class="toolbar-space"></span><span>Metadata only</span></div>
           </div>
           <aside class="details-pane" aria-label="Selected response">
             <div class="pane-toolbar"><h2>Response</h2><span class="toolbar-space"></span><button onclick={(event) => { if (!selectedEntry || !selectedInventory) return; actionTrigger = event.currentTarget; entryActionCache = selectedInventory.cacheName; refreshButton?.focus(); void actions.deleteEntry({ kind: 'delete-cache-entry', cacheName: selectedInventory.cacheName, requestKey: selectedEntry.requestKey }); }} disabled={!overview?.page || !selectedEntry || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete entry</button></div>
@@ -574,6 +590,7 @@
   button:hover:not(:disabled) { background: var(--hover); }
   button:active:not(:disabled) { background: var(--border); }
   button:disabled { opacity: .45; }
+  .request-button:disabled { opacity: 1; }
   button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--selection); outline-offset: -2px; }
   input, textarea, select { min-width: 0; border: 1px solid var(--border); border-radius: 3px; background: var(--background); caret-color: var(--foreground); }
   input::placeholder { color: var(--secondary); opacity: 1; }
