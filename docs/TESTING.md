@@ -291,4 +291,13 @@ The exact unchanged compiled Safari `panel-DrHlyNTl.js` (SHA-256 `79bc6ed3d77974
 
 The same existing signed Debug wrapper at `/tmp/sw-inspector-a1-signed/Build/Products/Debug/SW Inspector.app` rebuilt once successfully. `codesign --verify --deep --strict` passed outside the sandbox (sandbox trust access initially returned CSSMERR_TP_NOT_TRUSTED). Recursive exact comparisons of `.output/safari-mv3` against repository wrapper Resources and embedded signed extension Resources returned exit 0. No new app copy was created or launched. The native fixture at `http://localhost:4174` was restored and returned HTTP 200 for later user testing. The single QA browser closed normally through Playwright; no persistent profile was created, and the C3 Vite server stopped. Captures and harness sources remain as evidence; the signed wrapper reuses the previous path.
 
-Native C3 deletion/Cancel, two-same-URL Vary preservation, native theme/width/keyboard and failure/unknown checks remain pending, as do outstanding A1 document/navigation and C4 acceptance checks. **Refresh after navigation remains necessary** for the recorded temporary-access case.
+Native theme/width/keyboard/focus and failure/unknown checks remain pending, as do outstanding A1 document/navigation and C4 acceptance checks. The user-reported C3 checks below pass only their stated cases. **Refresh after navigation remains necessary** for the recorded temporary-access case.
+
+
+## C3 user-reported native Safari acceptance — 2026-10-21
+
+The user confirmed the supplied disposable `http://localhost:4174` workflow: Seed the entries fixture, select query `?v=1`, Cancel leaves it present, then confirm deletion removes `?v=1` while preserving `?v=2`, with no automatic next-row selection. Their response was “работает, отлично”. These cases are **passed by user report**, separately from the synthetic Chrome evidence above.
+
+For the same-URL fixture case, the user explicitly reported: “ну они имели один урл, я удалил один, удалился только один, другой остался”. This passes the native two-same-URL Vary fixture selective-preservation case **by user report**. The fixture seeds distinct Accept-Language requests with `Vary: Accept-Language`; its Inspect action independently lists method, URL, language and body. Raw fixture output and headers were not supplied, so this is not an independently observed runtime capture. The Chrome seed limitation remains accurate for that separate browser run.
+
+Exact Safari/macOS versions, installation route and permission gesture were not supplied for these reports and must not be inferred from earlier sessions. Native errors/unknown outcomes, stale tickets after navigation/reload, theme/width/keyboard/focus matrix and remaining C4 acceptance remain open. **Refresh after navigation remains necessary** for the recorded temporary-access case.
