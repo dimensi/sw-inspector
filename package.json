@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Service Worker and Cache Storage diagnostics with confirmed cache namespace and selected entry deletion",
+  "description": "Service Worker and Cache Storage diagnostics with confirmed namespace deletion and direct selected entry deletion",
   "scripts": {
     "dev": "wxt -b chrome",
     "build": "pnpm build:safari",

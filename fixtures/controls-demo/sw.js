@@ -1,1 +1,2 @@
-// C1 does not require a Service Worker. This fixture does not register one or intercept fetches.
+// C1–C4 Cache Storage checks do not require a Service Worker.
+// Reserved for the later worker-management fixture; not registered and no fetch interception.

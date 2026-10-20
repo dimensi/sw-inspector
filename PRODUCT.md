@@ -8,11 +8,11 @@ web
 
 ## Users
 
-Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state, and Cache Storage and explicitly delete selected or listed Cache Storage namespaces without changing worker lifecycle.
+Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state, and Cache Storage and explicitly delete selected entries or confirmed selected/listed Cache Storage namespaces without changing worker lifecycle.
 
 ## Product Purpose
 
-SW Inspector is a diagnostic panel with explicit, confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
+SW Inspector is a diagnostic panel with direct selected entry deletion and confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
 
 ## Operating Context
 

@@ -1,6 +1,6 @@
 # SW Inspector Privacy Policy
 
-Last updated: October 19, 2026
+Last updated: October 21, 2026
 
 This policy covers the SW Inspector macOS app and its Safari extension. SW Inspector processes inspection data locally on your Mac. It does not send that data to the developer or to an external service. It has no account system, advertising, analytics SDKs, or telemetry service.
 
@@ -15,6 +15,8 @@ Cached response bodies are read only when you explicitly request a text or JSON 
 Inspection results are held in memory while the panel is open. SW Inspector also uses temporary working records in the inspected page. Those records expire automatically or disappear when that page's execution context ends; closing the Inspector alone does not immediately remove every temporary record. The app does not maintain a persistent database of your inspections.
 
 Reports you choose to export remain in your chosen download location until you delete them. Disabling or uninstalling SW Inspector does not delete exported reports or the website's own stored data. The developer has no server-side copy of your inspection data to delete.
+
+You can explicitly delete a selected Cache Storage namespace or a fixed list of up to 100 namespaces after confirmation. Deleting one selected cache entry acts directly without a confirmation dialog. These actions affect the inspected website’s Cache Storage locally; they do not clear HTTP cache, cookies, IndexedDB, or localStorage. The website may recreate deleted data. If an action’s result is unknown, refresh to inspect the current state before taking another action.
 
 ## Reports and sharing
 

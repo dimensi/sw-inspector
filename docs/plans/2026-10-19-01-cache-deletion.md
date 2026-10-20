@@ -14,7 +14,7 @@
 - Namespace удаляется по имени через `caches.delete`; API не даёт atomic compare-and-delete. Не обещать, что сайт не пересоздаст кеш.
 - Entry удаляется по retained Cache + Request, с обычными match options; никогда не `ignoreSearch`, `ignoreMethod`, `ignoreVary`.
 - Нельзя трактовать видимые 1,500 строк как полный кеш. «Все кеши» означает имена, показанные в confirmation; новые имена после prepare не затрагивать.
-- Unregister, HTTP cache и «Clear all site data» вне задачи. Никаких действий по Delete key без подтверждения.
+- Unregister, HTTP cache и «Clear all site data» вне задачи. Клавиша Delete не запускает удаление. Прямой Delete entry разрешён только по явной кнопке выбранной записи согласно уточнению C3; namespace/batch по-прежнему требуют confirmation.
 
 ## Review Focus
 
@@ -61,14 +61,18 @@
 
 ## C4 — Выпуск и native acceptance
 
+**Status 2026-10-21:** fixture, policy/copy и release code checks завершены; **C4 не release-accepted**, native проверки ниже остаются открыты. Владелец доказательств — [TESTING](../TESTING.md#c4-independent-release-verification--2026-10-21).
+
 **Files:** create `fixtures/controls-demo/index.html`, `fixtures/controls-demo/sw.js` (расширяется W/S планами); modify `PRODUCT.md`, `AGENTS.md`, `README.md`, `DESIGN.md`, `package.json`, `wxt.config.ts`, `docs/adr/0001-read-only-diagnostics.md`, `docs/adr/0004-explicit-development-actions.md`, `docs/TESTING.md`. Маркетинговую read-only copy пересмотреть без ручного редактирования generated assets.
 
-- [ ] Fixture создаёт только собственные caches `sw-inspector-fixture-*`; **Seed fixture** — явная кнопка. Cleanup fixture удаляет только этот prefix. Документировать отдельный disposable localhost origin/port в TESTING, не использовать пользовательский сайт. Service worker fixtures не перехватывают другие origin.
-- [ ] Принять ADR 0004 для реально включённых C1–C3; ADR 0001 пометить partly superseded для cache mutations. Остальные запреты не стирать. Убрать безусловный Read-only label/description только вместе с готовой функцией, сохранить явные body-read/network limits.
-- [ ] Запустить все code checks из общего design; проверить manifest без новых permissions. Wrapper синхронизировать перед wrapper проверкой.
+- [x] Fixture создаёт только собственные caches `sw-inspector-fixture-*`; **Seed fixture** — явная кнопка. Cleanup fixture удаляет только этот prefix. Документировать отдельный disposable localhost origin/port в TESTING, не использовать пользовательский сайт. Service worker fixtures не перехватывают другие origin.
+- [x] Принять ADR 0004 для реально включённых C1–C3; ADR 0001 пометить partly superseded для cache mutations. Остальные запреты не стирать. Убрать безусловный Read-only label/description только вместе с готовой функцией, сохранить явные body-read/network limits.
+- [x] Запустить все code checks из общего design; проверить manifest без новых permissions. Wrapper синхронизировать перед wrapper проверкой. Independent QA 2026-10-21: [code checks, manifest, synced/signed wrapper evidence](../TESTING.md#c4-independent-release-verification--2026-10-21).
 - [ ] Native Safari: temporary extension после Reload + новый Inspector; Seed fixture → Refresh → cancel delete → actual delete entry/cache/all; проверить настоящее состояние fixture, не только исчезнувшую строку UI. Повторить delete после same-origin reload **без ручного Refresh**: старый ticket должен быть отклонён до side effect даже если Safari не сообщил navigation.
 - [ ] Native light/dark, 1280/540px, keyboard; повторный клик, permission denied, вкладка navigated во время delayed operation. Если потерю ответа нельзя надёжно воспроизвести native, оставить этот native пункт pending, автоматический transport test указать отдельно.
-- [ ] Записать факты в TESTING и незакрытые пункты. Никакого «native passed» по Chrome/Playwright WebKit.
+- [x] Записать факты в TESTING и незакрытые пункты. [C4 record](../TESTING.md#c4-independent-release-verification--2026-10-21) отделяет автоматические проверки от незакрытого native acceptance; полного «native passed» нет.
+
+C4 fixture adjustment (2026-10-21): cache-only acceptance uses real Cache Storage without registering a Service Worker or intercepting fetch. The no-op `sw.js` is reserved for the later worker-management plans; registering a worker solely to satisfy this file list would add unrelated lifecycle state. Fixture and policy checkboxes above reflect inspected source, not native acceptance. Existing marketing PNGs remain a historical 2026-10-19 kit; source copy is updated and regeneration is required before a new App Store asset upload.
 
 ## Источники и семантика
 

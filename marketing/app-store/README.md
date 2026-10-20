@@ -1,10 +1,10 @@
 # SW Inspector — App Store assets
 
-English assets for the macOS product page, prepared on 2026-10-19. The approved Inspector design remains unchanged. Start with [the overview](overview.png).
+Historical English assets for the macOS product page, prepared on 2026-10-19 before cache deletion was enabled. The existing PNGs and manifest describe that earlier build; regenerate and review the complete kit before using it for the cache-deletion release. The composition source now describes local inspection and explicit deletion. The approved Inspector design remains unchanged. Start with [the overview](overview.png).
 
-## Upload set
+## Historical screenshot set
 
-Upload the five files in `screenshots/` in numbered order. Each is **2880 × 1800**, **16:10**, **8-bit RGB PNG without an alpha channel**. These are the App Store upload files; `raw/` contains composition inputs with different dimensions.
+Do not upload this historical set for the current cache-deletion release. The five files in `screenshots/` were captured in numbered order. Each is **2880 × 1800**, **16:10**, **8-bit RGB PNG without an alpha channel**. These are the App Store upload files; `raw/` contains composition inputs with different dimensions.
 
 | File | Story |
 | --- | --- |
@@ -21,7 +21,7 @@ Two **3200 × 2000 RGB PNGs**, intended for a website, README, announcement, or 
 - [Workspace](mockups/01-workspace.png): overlapping light and dark Inspector windows.
 - [Appearance](mockups/02-appearance.png): compact layouts in both themes.
 
-Their title bars and window arrangement are presentation framing. They do not depict Apple hardware or additional application features. Use the five-file upload set for the App Store.
+Their title bars and window arrangement are presentation framing. They do not depict Apple hardware or additional application features. For a future App Store submission, regenerate and review all five screenshots and promotional mockups from the current build first.
 
 ## Source and truthfulness
 

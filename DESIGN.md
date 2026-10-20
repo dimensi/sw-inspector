@@ -1,6 +1,6 @@
 ---
 name: SW Inspector
-description: Compact inspection workspace with explicit cache namespace deletion for Safari Web Inspector
+description: Compact inspection workspace with explicit cache namespace and selected entry deletion for Safari Web Inspector
 colors:
   background: "#fff"
   chrome: "#f2f2f2"
