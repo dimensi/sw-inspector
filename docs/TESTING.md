@@ -34,6 +34,16 @@ Recorded on 2026-10-19: wide light and compact dark layouts, manual refresh/cach
 - [Compact dock, 390×844 dark](../.impeccable/review/mobile.png)
 - [Dated verification record](../.impeccable/review/result.json)
 
+## Oversized preview cancellation — 2026-10-20
+
+The user reported a JavaScript response preview remaining in Loading before `Inspected-page operation timed out`. A regression stream exceeding 48 KiB with non-settling cancellation reproduced a test timeout before the fix. Reading the fresh Cache.match response without cloning and cancelling without awaiting cleanup returns `too-large`. The test fixture now returns fresh response clones per match, as Cache Storage does. All 57 tests, `check` (0 errors/0 warnings), `sync:safari`, and `check:manifest` passed. Generated manifest inspection confirmed MV3, devtools_page, only devtools/activeTab permissions, and no background/content scripts or host permissions. Verification of the reported resource in native Safari remains pending.
+
+## Partial and full text preview — 2026-10-20
+
+Initial previews now return the first 48 KiB with `truncated: true`, avoiding a replacement character when UTF-8 ends mid-character. The separate `fullPreview` action reads the full response, retaining the transport deadline. The partial preview remains visible during loading and local errors. Regression tests cover non-settling cancellation, truncation, UTF-8 boundaries, full loading, and repeated previews. All 58 tests, `check` (0 errors/0 warnings), `sync:safari`, and `check:manifest` passed. The official Svelte autofixer found no issues; the Impeccable detector returned no findings.
+
+Synthetic Chrome UI check: partial notice/button rendered, full-load click replaced the text and removed the notice, the button accepted focus, and no document overflow occurred at the initial wide viewport or 390×844 dark viewport. The fixture reply was overridden to supply partial/full text; this verifies UI handling separately from the runner tests, not native Cache Storage. Signed Xcode Debug build succeeded and the rebuilt application was launched. The user then confirmed in Safari that partial preview and full loading work. Safari/macOS versions and origin were not re-recorded; this confirmation does not close unrelated native acceptance cases.
+
 ## Recorded native Safari run — 2026-10-19
 
 | Environment | Value |

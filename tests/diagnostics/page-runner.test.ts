@@ -15,8 +15,8 @@ function installOrigin(entries: Record<string, Stored[]>, options: { registratio
       return {
         keys: async () => records.map((record) => record.request),
         match: async (input: Request | string) => {
-          if (typeof input === 'string') return records.find((record) => record.request.url === input)?.response;
-          return records.find((record) => record.request === input)?.response;
+          if (typeof input === 'string') return records.find((record) => record.request.url === input)?.response.clone();
+          return records.find((record) => record.request === input)?.response.clone();
         },
       };
     }),
@@ -93,6 +93,32 @@ describe('page diagnostic runner', () => {
     const result = await executeDiagnostic({ type: 'list-cache-keys', cacheName: 'missing' });
     expect(result).toMatchObject({ ok: false, error: { code: 'cache-not-found' } });
     expect(storage.open).not.toHaveBeenCalled();
+  });
+
+  it('finishes oversized previews without waiting for stream cancellation', async () => {
+    const cancel = vi.fn(() => new Promise<void>(() => {}));
+    const response = new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(48 * 1024 + 1)); },
+      cancel,
+    }), { headers: { 'content-type': 'application/javascript' } });
+    const { storage } = installOrigin({ runtime: [] });
+    const request = new Request('https://app.test/large.js');
+    storage.open.mockResolvedValue({ keys: async () => [request], match: async () => response });
+    const inventory = value(await executeDiagnostic({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+    const result = value(await executeDiagnostic({ type: 'get-response-details', cacheName: 'runtime', requestKey: inventory.entries[0].requestKey, preview: true }) as Result<CacheDetails>);
+    expect(result.preview).toEqual({ kind: 'text', text: '\u0000'.repeat(48 * 1024), truncated: true });
+    expect(cancel).toHaveBeenCalledOnce();
+  }, 500);
+
+  it('loads the full response only on explicit request and preserves UTF-8 boundaries', async () => {
+    const body = 'a'.repeat(48 * 1024 - 1) + '€tail';
+    installOrigin({ runtime: [{ request: new Request('https://app.test/large'), response: new Response(body, { headers: { 'content-type': 'text/plain' } }) }] });
+    const inventory = value(await executeDiagnostic({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+    const command = { type: 'get-response-details' as const, cacheName: 'runtime', requestKey: inventory.entries[0].requestKey, preview: true };
+    const partial = value(await executeDiagnostic(command) as Result<CacheDetails>);
+    expect(partial.preview).toEqual({ kind: 'text', text: 'a'.repeat(48 * 1024 - 1), truncated: true });
+    const full = value(await executeDiagnostic({ ...command, fullPreview: true }) as Result<CacheDetails>);
+    expect(full.preview).toEqual({ kind: 'text', text: body });
   });
 
   it('keeps the inventory usable after previewing a response', async () => {

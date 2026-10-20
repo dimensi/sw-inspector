@@ -46,36 +46,37 @@ async function openExistingCache(name: string): Promise<Cache> {
   return caches.open(name);
 }
 
-async function boundedText(response: Response): Promise<CacheDetails['preview']> {
+async function boundedText(response: Response, full: boolean): Promise<CacheDetails['preview']> {
   if (response.type === 'opaque') return { kind: 'opaque' };
   const contentType = response.headers.get('content-type') ?? '';
   if (!/^(text\/|application\/(json|javascript|xml|manifest\+json)|image\/svg\+xml)/i.test(contentType)) {
     return { kind: 'unavailable' };
   }
   if (!response.body) return { kind: 'unavailable' };
-  const reader = response.clone().body?.getReader();
-  if (!reader) return { kind: 'unavailable' };
-  const chunks: Uint8Array[] = [];
+  // Cache.match returns a fresh response; cloning would leave an unread tee branch.
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
   let bytes = 0;
   try {
-    while (bytes <= MAX_PREVIEW_BYTES) {
+    while (true) {
       const next = await reader.read();
       if (next.done) break;
+      const remaining = MAX_PREVIEW_BYTES - bytes;
+      if (!full && next.value.byteLength > remaining) {
+        chunks.push(decoder.decode(next.value.subarray(0, remaining), { stream: true }));
+        return { kind: 'text', text: chunks.join(''), truncated: true };
+      }
       bytes += next.value.byteLength;
-      if (bytes > MAX_PREVIEW_BYTES) return { kind: 'too-large' };
-      chunks.push(next.value);
+      chunks.push(decoder.decode(next.value, { stream: true }));
     }
-    const merged = new Uint8Array(bytes);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return { kind: 'text', text: new TextDecoder().decode(merged) };
+    chunks.push(decoder.decode());
+    return { kind: 'text', text: chunks.join('') };
   } catch {
     return { kind: 'unavailable' };
   } finally {
-    await reader.cancel().catch(() => undefined);
+    // Cleanup must not delay publishing a preview result.
+    void reader.cancel().catch(() => undefined);
   }
 }
 
@@ -156,7 +157,7 @@ async function listCacheKeys(cacheName: string): Promise<Result<CacheInventory>>
   }
 }
 
-async function details(cacheName: string, requestKey: string, preview: boolean): Promise<Result<CacheDetails>> {
+async function details(cacheName: string, requestKey: string, preview: boolean, full: boolean): Promise<Result<CacheDetails>> {
   const [snapshotId, rawIndex] = requestKey.split(':');
   const snapshot = registry().get(snapshotId);
   const index = Number(rawIndex);
@@ -174,7 +175,7 @@ async function details(cacheName: string, requestKey: string, preview: boolean):
         status: response.type === 'opaque' ? null : response.status,
         contentType: response.headers.get('content-type'),
         headers: Array.from(response.headers.entries()),
-        preview: preview ? await boundedText(response) : { kind: 'not-requested' },
+        preview: preview ? await boundedText(response, full) : { kind: 'not-requested' },
       },
     };
     return result;
@@ -249,7 +250,7 @@ async function checkUrls(paths: string[]): Promise<Result<OfflineCheck[]>> {
 return async function executeDiagnostic(command: DiagnosticCommand): Promise<Result<unknown>> {
   if (command.type === 'overview') return overview();
   if (command.type === 'list-cache-keys') return listCacheKeys(command.cacheName);
-  if (command.type === 'get-response-details') return details(command.cacheName, command.requestKey, command.preview === true);
+  if (command.type === 'get-response-details') return details(command.cacheName, command.requestKey, command.preview === true, command.fullPreview === true);
   if (command.type === 'measure-cache') return measureCache(command.cacheName);
   return checkUrls(command.paths);
 }

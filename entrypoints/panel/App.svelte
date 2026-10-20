@@ -123,7 +123,7 @@
     else operationError = { area: 'cache', message: result.error.message };
   }
 
-  async function showDetails(requestKey: string, preview = false) {
+  async function showDetails(requestKey: string, preview = false, fullPreview = false) {
     if (!selectedInventory) return;
     const navigation = navigationGeneration;
     const inventory = selectedInventory;
@@ -133,7 +133,7 @@
     if (!preview) selectedDetails = null;
     operationError = null;
     const result = await transport.invoke<CacheDetails>({
-      type: 'get-response-details', cacheName: inventory.cacheName, requestKey, preview,
+      type: 'get-response-details', cacheName: inventory.cacheName, requestKey, preview, fullPreview,
     });
     if (navigation !== navigationGeneration || operation !== detailsGeneration || selectedInventory?.snapshotId !== inventory.snapshotId) return;
     working = '';
@@ -322,8 +322,15 @@
                 <details class="headers"><summary>Response headers <span class="secondary">({selectedDetails.headers.length})</span></summary><p class="footnote">Headers may contain sensitive values.</p><dl class="header-properties">{#each selectedDetails.headers as header, index (index)}<div><dt>{header[0]}</dt><dd>{header[1]}</dd></div>{/each}</dl></details>
                 <h3 class="section-title">Preview</h3>
                 {#if selectedDetails.preview.kind === 'not-requested' && selectedRequestKey}<div class="preview-action"><button onclick={() => showDetails(selectedRequestKey!, true)} disabled={working.startsWith('entry:')}>{working.startsWith('entry:') ? 'Loading…' : 'Load text / JSON'}</button><p class="footnote">Response body is read only on request.</p></div>
-                {:else if selectedDetails.preview.kind === 'text'}<pre class="preview">{selectedDetails.preview.text}</pre>
-                {:else}<p class="inline-empty">{selectedDetails.preview.kind === 'opaque' ? 'The response body is opaque.' : selectedDetails.preview.kind === 'too-large' ? 'The response exceeds the preview limit.' : 'Text preview is unavailable for this response.'}</p>{/if}
+                {:else if selectedDetails.preview.kind === 'text'}
+                  {#if selectedDetails.preview.truncated && selectedRequestKey}
+                    <div class="preview-action">
+                      <p class="footnote">Showing the first 48 KiB. This file is partially displayed.</p>
+                      <button onclick={() => showDetails(selectedRequestKey!, true, true)} disabled={working.startsWith('entry:')}>{working.startsWith('entry:') ? 'Loading…' : 'Load full response'}</button>
+                    </div>
+                  {/if}
+                  <pre class="preview">{selectedDetails.preview.text}</pre>
+                {:else}<p class="inline-empty">{selectedDetails.preview.kind === 'opaque' ? 'The response body is opaque.' : 'Text preview is unavailable for this response.'}</p>{/if}
               {:else}<p class="inline-empty">{working.startsWith('entry:') ? 'Reading response metadata…' : 'Select a request to view its response.'}</p>{/if}
             </div>
           </aside>

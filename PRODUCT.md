@@ -22,7 +22,7 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 
 - Service Worker registrations, installing/waiting/active states, and current controller.
 - Cache namespaces and bounded request inventories; response metadata on selection.
-- Explicit bounded text/JSON preview and response-body measurement.
+- Explicit text/JSON preview of the first 48 KiB, optional full text loading, and response-body measurement.
 - Whole-origin storage usage/quota estimates and same-origin cache-key checks.
 - Local metadata-only JSON export; no server, telemetry, or automatic body collection.
 - No worker lifecycle controls, cache editing, network interception, offline toggles, or claim that cache presence proves offline operation.

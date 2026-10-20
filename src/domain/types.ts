@@ -1,7 +1,7 @@
 export type DiagnosticCommand =
   | { type: 'overview' }
   | { type: 'list-cache-keys'; cacheName: string }
-  | { type: 'get-response-details'; cacheName: string; requestKey: string; preview?: boolean }
+  | { type: 'get-response-details'; cacheName: string; requestKey: string; preview?: boolean; fullPreview?: boolean }
   | { type: 'measure-cache'; cacheName: string }
   | { type: 'check-urls'; paths: string[] };
 
@@ -54,7 +54,7 @@ export type CacheDetails = {
   status: number | null;
   contentType: string | null;
   headers: Array<[string, string]>;
-  preview: { kind: 'not-requested' | 'text' | 'opaque' | 'too-large' | 'unavailable'; text?: string };
+  preview: { kind: 'not-requested' | 'text' | 'opaque' | 'unavailable'; text?: string; truncated?: boolean };
 };
 
 export type CacheMeasurement = {
