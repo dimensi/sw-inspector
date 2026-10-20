@@ -27,12 +27,13 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 - Local metadata-only JSON export; no server, telemetry, or automatic body collection.
 - Explicit **Delete cache…** prepares a document-bound confirmation for one named namespace; Cancel has no effect. Results distinguish deleted, absent, failed, and unknown. The site may recreate a cache.
 - Explicit **Delete all caches…** prepares the full fixed list of at most 100 namespace names with origin and count. **Delete listed caches** deletes that list sequentially; newly created names are excluded. Per-name applied, absent, failed and skipped outcomes remain distinct. More than 100 names requires deleting individually.
-- No worker lifecycle controls, cache entry editing/deletion, network interception, offline toggles, or claim that cache presence proves offline operation.
+- Explicit **Delete entry…** confirms the method, full URL and cache name, then deletes using the retained Cache and Request. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
+- No worker lifecycle controls, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
 - The execution route and permission boundary are recorded in [ADR 0002](docs/adr/0002-devtools-page-bridge.md). Safari 27.0 navigation under temporary access remains a known limitation.
 
 ## Evidence on Hand
 
-Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace and fixed-list batch deletion are implemented; native Safari acceptance remains tracked separately. Entry deletion, worker management, manifest loading and messaging remain planned.
+Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker management, manifest loading and messaging remain planned.
 
 - [Native Safari results and pending acceptance](docs/TESTING.md), versioned separately from automated checks.
 - [Approved visual baseline](.impeccable/review/cache.png), using synthetic data, with tokens and rules in [DESIGN.md](DESIGN.md).

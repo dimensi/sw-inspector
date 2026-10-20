@@ -1,6 +1,7 @@
 import { createPageContext } from '../../src/bridge/page-context';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPageRunner, executeDiagnostic } from '../../src/diagnostics/page-runner';
+import { createCacheActions } from '../../src/cache/page-actions';
 import type { DiagnosticCommand, CacheDetails, CacheInventory, OfflineCheck, Overview, Result } from '../../src/domain/types';
 
 type Stored = { request: Request; response: Response };
@@ -48,6 +49,30 @@ function value<T>(result: Result<T>): T {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('page diagnostic runner', () => {
+  it('expired_preview_snapshot_requires_refresh without prolonging TTL', async () => {
+    vi.useFakeTimers();
+    try {
+      installOrigin({ runtime: [{ request: new Request('https://app.test/a'), response: new Response('a', { headers: { 'content-type': 'text/plain' } }) }] });
+      const key = `snapshots-${crypto.randomUUID()}`;
+      const context = createPageContext(`context-${crypto.randomUUID()}`);
+      const run = createPageRunner(key, context);
+      const inventory = value(await run({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+      const requestKey = inventory.entries[0].requestKey;
+      vi.setSystemTime(Date.now() + 299_999);
+      expect(await run({ type: 'get-response-details', cacheName: 'runtime', requestKey, preview: true })).toMatchObject({ ok: true });
+      vi.setSystemTime(Date.now() + 1);
+      await expect(createCacheActions(context, key)['delete-cache-entry']!.prepare({ kind: 'delete-cache-entry', cacheName: 'runtime', requestKey })).rejects.toMatchObject({ message: 'Refresh this cache before deleting an entry.' });
+      delete (globalThis as Record<string, unknown>)[key];
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('rejects malformed details keys without poisoning a valid snapshot', async () => {
+    installOrigin({ runtime: [{ request: new Request('https://app.test/a'), response: new Response('a') }] });
+    const run = createPageRunner(`snapshots-${crypto.randomUUID()}`);
+    const inventory = value(await run({ type: 'list-cache-keys', cacheName: 'runtime' }) as Result<CacheInventory>);
+    for (const index of ['', '-1', '00', '0:1', '0.5', ' 0']) expect(await run({ type: 'get-response-details', cacheName: 'runtime', requestKey: `${inventory.snapshotId}:${index}` })).toMatchObject({ ok: false, error: { code: 'stale-snapshot' } });
+    expect(await run({ type: 'get-response-details', cacheName: 'runtime', requestKey: inventory.entries[0].requestKey })).toMatchObject({ ok: true });
+  });
   it('does not retain a late inventory after pagehide', async () => {
     const { storage } = installOrigin({ runtime: [] });
     const events = new EventTarget();

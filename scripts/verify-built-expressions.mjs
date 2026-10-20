@@ -91,4 +91,45 @@ assert.equal((await run(batch)).error.code, 'cache-not-found');
 names = Array.from({ length: 101 }, (_, i) => `compiled-${i}`);
 assert.equal((await run(batch)).error.code, 'unsupported');
 assert.equal(realm.effects, 3);
-console.log(`PASS ${filename}: compiled start/poll, context/overview, C1 hostile-name prepare/commit, C2 fixed names/new-name exclusion, empty/101 rejection, duplicate commits execute once`);
+// C3 must preserve inspected-document objects across separate compiled jobs.
+names = ['compiled-entries'];
+const requests = [
+  new Request('https://fixture.test/a?v=1', { headers: { 'Accept-Language': 'en' } }),
+  new Request('https://fixture.test/a?v=2', { headers: { 'Accept-Language': 'fr' } }),
+];
+let opened = 0;
+const entryDeletes = [];
+const retainedCache = {
+  keys: async () => requests,
+  match: async request => {
+    assert.equal(request, requests[1]);
+    return new Response('selected body', { headers: { 'Content-Type': 'text/plain' } });
+  },
+  delete: async (...args) => { entryDeletes.push(args); return true; },
+};
+realm.TextDecoder = TextDecoder;
+realm.caches.open = async name => { assert.equal(name, names[0]); opened++; return retainedCache; };
+const inventory = await run({ type: 'list-cache-keys', cacheName: names[0] });
+assert.equal(inventory.ok, true);
+assert.equal(opened, 1);
+const requestKey = inventory.value.entries[1].requestKey;
+assert.deepEqual((await run({ type: 'get-response-details', cacheName: names[0], requestKey, preview: true })).value.preview,
+  { kind: 'text', text: 'selected body' });
+// Fail loudly if prepare/commit reconstruct a Cache instead of using the retained one.
+realm.caches.open = async () => { assert.fail('Entry action must not open a cache'); };
+const entryTicket = await run({ type: 'prepare-action', expectedPage: page,
+  intent: { kind: 'delete-cache-entry', cacheName: names[0], requestKey } });
+assert.equal(entryTicket.ok, true);
+assert.ok(entryTicket.value.summary.includes('Request: GET https://fixture.test/a?v=2'));
+assert.equal(entryDeletes.length, 0);
+const entryCommit = { type: 'commit-action', expectedPage: page, ticketId: entryTicket.value.ticketId };
+const entryReceipt = await run(entryCommit);
+assert.deepEqual(entryReceipt.value.items, [{ target: 'GET https://fixture.test/a?v=2', outcome: 'applied' }]);
+assert.deepEqual(await run(entryCommit), entryReceipt);
+assert.equal(entryDeletes.length, 1);
+assert.equal(entryDeletes[0].length, 1, 'Ordinary match options only');
+assert.equal(entryDeletes[0][0], requests[1], 'Exact retained Request');
+assert.equal(opened, 1);
+assert.equal(realm.effects, 3, 'Entry action must not call CacheStorage.delete');
+assert.equal((await run({ type: 'get-response-details', cacheName: names[0], requestKey })).error.code, 'stale-snapshot');
+console.log(`PASS ${filename}: compiled start/poll, context/overview, C1 hostile-name prepare/commit, C2 fixed names/new-name exclusion, empty/101 rejection, C3 inventory/preview/prepare/commit retained Cache+Request and invalidation, duplicate commits execute once`);

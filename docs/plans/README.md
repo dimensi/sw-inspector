@@ -1,6 +1,6 @@
 # План развития SW Inspector
 
-Дата: 2026-10-19. Статус на 2026-10-21: **внутренний фундамент 00/A1–A4 code-complete; 01/C1–C2 code-complete; следующая задача — 01/C3, остальные feature tasks запланированы**. Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)). Пользователь запросил планы, пригодные для выполнения небольшими моделями; этот каталог не означает, что функции уже доступны. Текущая поставка и её ограничения описаны в [PRODUCT.md](../../PRODUCT.md).
+Дата: 2026-10-19. Статус на 2026-10-21: **внутренний фундамент 00/A1–A4 code-complete; 01/C1–C3 code-complete; следующая задача — 01/C4 acceptance, остальные feature tasks запланированы**. Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)). Пользователь запросил планы, пригодные для выполнения небольшими моделями; этот каталог не означает, что функции уже доступны. Текущая поставка и её ограничения описаны в [PRODUCT.md](../../PRODUCT.md).
 
 ## Что строим и в каком порядке
 
@@ -11,7 +11,7 @@
 | 3 | [Web App Manifest](2026-10-19-03-web-manifest.md) | Источник, поля, URL, объявления иконок, raw JSON и локальные замечания | Идентичность документа и маршрутизация из 00; cache/worker actions не нужны |
 | 4 | [Сообщения SW](2026-10-19-04-worker-messages.md) | JSON send, ответ через MessageChannel, ограниченный журнал сообщений этой страницы | 00 и выдача worker handles из 02 |
 
-Каждый план разбит на задачи с интерфейсами, файлами и проверками. **Завершённый фундамент:** [00 / A1–A4](2026-10-19-00-action-foundation.md) code-complete; файл сохранён как контракт и история проверок для зависимых планов, а не активное задание. [Общие решения](2026-10-19-development-design.md) сохраняют точные интерфейсы. C1–C2 code-complete; следующая задача — **01/C3** (native C2 Cancel/batch-delete подтверждён пользователем 2026-10-21; [evidence](../TESTING.md#c2-user-reported-native-safari-acceptance--2026-10-21)); native C1 Cancel/single-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); остальные native проверки открыты; [A4 acceptance](../TESTING.md#a4-controller-and-confirmation--2026-10-20) отделяет browser fixture от native Safari. После общего фундамента 01, 02 и 03 можно делать независимо в отдельных ветках; изменения общего dispatcher объединяет один исполнитель. 04 начинается после W1 из 02. Не запускать две модели одновременно на `App.svelte`, `expressions.ts` или общих типах в одном checkout.
+Каждый план разбит на задачи с интерфейсами, файлами и проверками. **Завершённый фундамент:** [00 / A1–A4](2026-10-19-00-action-foundation.md) code-complete; файл сохранён как контракт и история проверок для зависимых планов, а не активное задание. [Общие решения](2026-10-19-development-design.md) сохраняют точные интерфейсы. C1–C3 code-complete; следующая задача — **01/C4 acceptance** (native C3 pending) (native C2 Cancel/batch-delete подтверждён пользователем 2026-10-21; [evidence](../TESTING.md#c2-user-reported-native-safari-acceptance--2026-10-21)); native C1 Cancel/single-delete подтверждён пользователем 2026-10-21 ([evidence](../TESTING.md#c1-user-reported-native-safari-acceptance--2026-10-21)); остальные native проверки открыты; [A4 acceptance](../TESTING.md#a4-controller-and-confirmation--2026-10-20) отделяет browser fixture от native Safari. После общего фундамента 01, 02 и 03 можно делать независимо в отдельных ветках; изменения общего dispatcher объединяет один исполнитель. 04 начинается после W1 из 02. Не запускать две модели одновременно на `App.svelte`, `expressions.ts` или общих типах в одном checkout.
 
 ## Как выдавать задачу небольшой модели
 
@@ -37,6 +37,6 @@
 ## Готовность и обслуживание документов
 
 - В каждом плане checkbox изначально пуст. Отмечать только проверенный результат.
-- При реализации первого изменения границы read-only принять [ADR 0004](../adr/0004-explicit-development-actions.md) и обновить PRODUCT/AGENTS/copy одновременно с функцией. ADR принят для C1 selected namespace и C2 fixed-list batch deletion; остальные исключения ещё не активированы.
+- При реализации первого изменения границы read-only принять [ADR 0004](../adr/0004-explicit-development-actions.md) и обновить PRODUCT/AGENTS/copy одновременно с функцией. ADR принят для C1 selected namespace, C2 fixed-list batch deletion и C3 retained-request entry deletion; остальные исключения ещё не активированы.
 - Записывать реальный Safari результат в [TESTING.md](../TESTING.md): версия, installation route, origin, действие, результат. Синтетическая fixture и WebKit Playwright — отдельные доказательства.
 - После выпуска перенести устойчивые решения в владельцев фактов (PRODUCT/DESIGN/ADR/TESTING). Выполненный план удалить либо убрать из актуального индекса; не оставлять два противоречащих источника требований.

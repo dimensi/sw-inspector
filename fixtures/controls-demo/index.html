@@ -10,11 +10,11 @@ const result = document.querySelector('#result');
 async function inspect() {
   const names = (await caches.keys()).filter(name => name.startsWith(prefix));
   const rows = [];
-  for (const name of names) rows.push({ name, keys: (await (await caches.open(name)).keys()).length });
+  for (const name of names) { const cache = await caches.open(name); const keys = await cache.keys(); const entries = []; for (const request of keys) entries.push({ method: request.method, url: request.url, language: request.headers.get('Accept-Language'), body: await (await cache.match(request)).text() }); rows.push({ name, keys: keys.length, entries }); }
   result.textContent = JSON.stringify(rows, null, 2);
 }
 function action(id, run) { document.querySelector(id).onclick = async () => { try { await run(); await inspect(); } catch (error) { result.textContent = String(error); } }; }
-action('#seed', async () => { for (const name of ['alpha', 'beta']) { const cache = await caches.open(prefix + name); await cache.put(new Request(location.origin + '/fixture-' + name), new Response('Fixture ' + name, { headers: { 'Content-Type': 'text/plain' } })); } });
+action('#seed', async () => { for (const name of ['alpha', 'beta']) { const cache = await caches.open(prefix + name); await cache.put(new Request(location.origin + '/fixture-' + name), new Response('Fixture ' + name, { headers: { 'Content-Type': 'text/plain' } })); } const cache = await caches.open(prefix + 'entries'); for (const language of ['en', 'fr']) await cache.put(new Request(location.origin + '/fixture-vary', { headers: { 'Accept-Language': language } }), new Response(language, { headers: { Vary: 'Accept-Language', 'Content-Type': 'text/plain' } })); for (const version of [1, 2]) await cache.put(new Request(location.origin + '/fixture-query?v=' + version), new Response('Version ' + version, { headers: { 'Content-Type': 'text/plain' } })); });
 action('#inspect', async () => {});
 action('#cleanup', async () => { for (const name of await caches.keys()) if (name.startsWith(prefix)) await caches.delete(name); });
 </script></html>

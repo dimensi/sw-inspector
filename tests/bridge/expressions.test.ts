@@ -72,7 +72,7 @@ it('serializes control dependencies into a fresh realm and keeps hostile strings
   const page = (await run({ type: 'page-context' })).value;
   const hostile = '</script>\u2028\u2029';
   const prepare = { type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-cache', cacheName: hostile } } as const;
-  expect(await run({ ...prepare, intent: { kind: 'delete-cache-entry', cacheName: hostile, requestKey: 'x:0' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  expect(await run({ ...prepare, intent: { kind: 'delete-cache-entry', cacheName: hostile, requestKey: 'x:0' } })).toMatchObject({ ok: false, error: { code: 'stale-target' } });
   const ticket = (await run(prepare)).value;
   expect(ticket.summary).toEqual(['Origin: https://example.test', `Cache: ${hostile}`, 'Cached responses will be removed. The site may recreate this cache.']);
   const commit = { type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId } as const;
@@ -106,4 +106,33 @@ it('executes a frozen batch through serialized production dependencies in a fres
   ] } });
   expect(await run(command)).toEqual(receipt);
   expect(calls).toEqual(['a', 'b', 'c']);
+});
+
+
+it('retains Cache and Request across serialized inventory, preview, prepare and commit jobs', async () => {
+  const events = new EventTarget();
+  const requests = [new Request('https://entry.test/a', { headers: { 'Accept-Language': 'en' } }), new Request('https://entry.test/a', { headers: { 'Accept-Language': 'fr' } })];
+  const remove = vi.fn(async () => true);
+  const cache = { keys: async () => requests, match: async () => new Response('body', { headers: { 'content-type': 'text/plain' } }), delete: remove };
+  const open = vi.fn(async () => cache);
+  const realm = { crypto, navigator: {}, location: { origin: 'https://entry.test', href: 'https://entry.test/' },
+    setTimeout: () => 0, TextDecoder, Date, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events),
+    caches: { keys: async () => ['a'], open } };
+  let sequence = 0;
+  async function run(command: InspectorCommand) {
+    const id = `entry-${++sequence}`;
+    runInNewContext(createJobStartExpression(command, id), realm);
+    let reply;
+    do { await new Promise(resolve => setImmediate(resolve)); reply = JSON.parse(runInNewContext(createJobPollExpression(id), realm)); } while (reply.state === 'pending');
+    return reply.result;
+  }
+  const page = (await run({ type: 'page-context' })).value;
+  const inventory = (await run({ type: 'list-cache-keys', cacheName: 'a' })).value;
+  const requestKey = inventory.entries[1].requestKey;
+  expect(await run({ type: 'get-response-details', cacheName: 'a', requestKey, preview: true })).toMatchObject({ ok: true, value: { preview: { text: 'body' } } });
+  const ticket = (await run({ type: 'prepare-action', expectedPage: page, intent: { kind: 'delete-cache-entry', cacheName: 'a', requestKey } })).value;
+  expect(await run({ type: 'commit-action', expectedPage: page, ticketId: ticket.ticketId })).toMatchObject({ ok: true, value: { items: [{ target: 'GET https://entry.test/a', outcome: 'applied' }] } });
+  expect(remove).toHaveBeenCalledExactlyOnceWith(requests[1]);
+  expect(open).toHaveBeenCalledTimes(1);
+  expect(await run({ type: 'get-response-details', cacheName: 'a', requestKey })).toMatchObject({ ok: false, error: { code: 'stale-snapshot' } });
 });

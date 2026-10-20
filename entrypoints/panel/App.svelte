@@ -50,6 +50,7 @@
   });
   let actionContextGeneration = 0;
   let actionTrigger: HTMLButtonElement | null = null;
+  let entryActionCache: string | null = null;
   let refreshButton: HTMLButtonElement;
   function restoreActionFocus() {
     if (actionTrigger?.isConnected && !actionTrigger.disabled) actionTrigger.focus();
@@ -63,7 +64,7 @@
     skipped: actionState.receipt?.items.filter(item => item.outcome === 'skipped').length ?? 0,
   });
   const receiptSummary = $derived([
-    receiptCounts.deleted ? `Deleted ${receiptCounts.deleted} ${receiptCounts.deleted === 1 ? 'cache' : 'caches'}.` : '',
+    receiptCounts.deleted ? actionState.receipt?.kind === 'delete-cache-entry' ? 'Deleted 1 entry.' : `Deleted ${receiptCounts.deleted} ${receiptCounts.deleted === 1 ? 'cache' : 'caches'}.` : '',
     receiptCounts.absent ? `${receiptCounts.absent} already absent.` : '',
     receiptCounts.failed ? `${receiptCounts.failed} could not be deleted.` : '',
     receiptCounts.skipped ? `${receiptCounts.skipped} not attempted.` : '',
@@ -88,6 +89,36 @@
       if (navigation !== navigationGeneration || actionContext !== actionContextGeneration) return;
       if (!context.ok) { inspectionError = context.error.message; return; }
       if (!samePage(context.value, expectedPage)) return;
+      if (receipt.kind === 'delete-cache-entry') {
+        const cacheName = entryActionCache;
+        if (!cacheName || !receipt.items.some(item => item.outcome === 'applied' || item.outcome === 'absent')) return;
+        measurements = measurements.filter(item => item.cacheName !== cacheName);
+        if (selectedInventory?.cacheName !== cacheName || view !== 'cache') return;
+        const restoreDisabledTrigger = document.activeElement === actionTrigger;
+        const selection = ++cacheSelectionGeneration;
+        detailsGeneration += 1;
+        measurementController?.abort();
+        measurementController = null;
+        working = '';
+        selectedInventory = null;
+        selectedDetails = null;
+        selectedRequestKey = null;
+        operationError = null;
+        queueMicrotask(() => {
+          if (restoreDisabledTrigger && (document.activeElement === actionTrigger || document.activeElement === document.body)
+            && navigation === navigationGeneration && actionContext === actionContextGeneration) refreshButton?.focus();
+        });
+        const result = await transport.invoke<CacheInventory>({ type: 'list-cache-keys', cacheName });
+        if (navigation !== navigationGeneration || actionContext !== actionContextGeneration || selection !== cacheSelectionGeneration) return;
+        if (result.ok) {
+          selectedInventory = result.value;
+          if (overview) overview = { ...overview, caches: overview.caches.map(item => item.name === cacheName ? { ...item, entries: result.value.totalEntries, partial: result.value.partial } : item) };
+        } else if (result.error.code === 'cache-not-found') {
+          view = 'caches';
+          if (overview) overview = { ...overview, caches: overview.caches.filter(item => item.name !== cacheName) };
+        } else operationError = { area: 'cache', message: result.error.message };
+        return;
+      }
       const affected = new Set(receipt.items.filter(item => item.outcome === 'applied' || item.outcome === 'absent').map(item => item.target));
       measurements = measurements.filter(item => !affected.has(item.cacheName));
       if (selectedInventory && affected.has(selectedInventory.cacheName)) {
@@ -116,7 +147,7 @@
       lastUpdated = new Date().toLocaleTimeString();
     },
   });
-  function resetActions() { actionContextGeneration += 1; actions.reset(); }
+  function resetActions() { actionContextGeneration += 1; entryActionCache = null; actions.reset(); }
   function samePage(a: PageIdentity, b: PageIdentity) {
     return a.documentId === b.documentId && a.origin === b.origin && a.url === b.url;
   }
@@ -467,7 +498,7 @@
             <div class="table-footer">{selectedInventory?.partial ? 'Partial inventory' : 'Cached requests'}<span class="toolbar-space"></span><span>Metadata only</span></div>
           </div>
           <aside class="details-pane" aria-label="Selected response">
-            <div class="pane-toolbar"><h2>Response</h2></div>
+            <div class="pane-toolbar"><h2>Response</h2><span class="toolbar-space"></span><button onclick={(event) => { if (!selectedEntry || !selectedInventory) return; actionTrigger = event.currentTarget; entryActionCache = selectedInventory.cacheName; void actions.prepare({ kind: 'delete-cache-entry', cacheName: selectedInventory.cacheName, requestKey: selectedEntry.requestKey }); }} disabled={!overview?.page || !selectedEntry || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete entry…</button></div>
             <div class="details-scroll">
               {#if selectedEntry}<div class="request-location"><code>{selectedEntry.url}</code></div>{/if}
               {#if operationError?.area === 'details'}<p class="notice error" role="alert">{operationError.message}</p>{/if}

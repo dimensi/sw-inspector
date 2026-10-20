@@ -1,6 +1,6 @@
 # SW Inspector
 
-Service Worker and Cache Storage diagnostics with explicit confirmed namespace deletion inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, and a local JSON report.
+Service Worker and Cache Storage diagnostics with explicit confirmed namespace and selected entry deletion inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, and a local JSON report.
 
 ## Support
 
@@ -45,7 +45,7 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 - Measured response-body bytes are not disk allocation. Storage usage/quota estimates cover the whole origin.
 - Preview and body measurement are explicit actions. Exports exclude response bodies and previews; review URLs before sharing.
 - With Safari 27.0 temporary `activeTab` access, navigation notifications were not delivered in the recorded run. Click **Refresh** after navigating.
-- **Delete cache…** deletes only the selected Cache Storage namespace after confirmation. It does not clear HTTP cache, IndexedDB, cookies, or localStorage. The site may recreate the namespace; an unknown outcome requires Refresh, never an automatic retry. **Delete all caches…** confirms the complete fixed list (up to 100 names); **Delete listed caches** affects only those names, sequentially, and reports each outcome. More than 100 names requires deleting individually. No worker lifecycle mutation, entry deletion, network probes, or telemetry are performed. The unavoidable `caches.keys()` / `caches.open()` race is documented in [ADR 0001](docs/adr/0001-read-only-diagnostics.md).
+- **Delete cache…** deletes only the selected Cache Storage namespace after confirmation. It does not clear HTTP cache, IndexedDB, cookies, or localStorage. The site may recreate the namespace; an unknown outcome requires Refresh, never an automatic retry. **Delete all caches…** confirms the complete fixed list (up to 100 names); **Delete listed caches** affects only those names, sequentially, and reports each outcome. More than 100 names requires deleting individually. **Delete entry…** confirms the selected method, full URL and cache, using its retained Cache and Request with ordinary matching. Expired inventories require Refresh; a known result rereads only that cache and clears the response selection. No worker lifecycle mutation, cache entry editing, network probes, or telemetry are performed. The unavoidable `caches.keys()` / `caches.open()` race is documented in [ADR 0001](docs/adr/0001-read-only-diagnostics.md).
 
 ## Project documents
 

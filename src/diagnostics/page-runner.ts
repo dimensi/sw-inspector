@@ -1,5 +1,6 @@
 import { createPageContext, type PageContext } from '../bridge/page-context';
 import type { InspectorCommand } from '../domain/commands';
+import type { SnapshotRecord } from '../cache/snapshot-types';
 import type {
   CacheDetails,
   CacheEntry,
@@ -18,7 +19,6 @@ const MAX_PREVIEW_BYTES = 48 * 1024;
 const SNAPSHOT_TTL_MS = 5 * 60 * 1_000;
 const MAX_SNAPSHOTS = 12;
 
-type SnapshotRecord = { cacheName: string; requests: Request[]; expiresAt: number };
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -155,7 +155,7 @@ async function listCacheKeys(cacheName: string): Promise<Result<CacheInventory>>
     const visibleRequests = requests.slice(0, MAX_ENTRIES);
     const snapshots = registry();
     while (snapshots.size >= MAX_SNAPSHOTS) snapshots.delete(snapshots.keys().next().value!);
-    snapshots.set(snapshotId, { cacheName, requests: visibleRequests, expiresAt: Date.now() + SNAPSHOT_TTL_MS });
+    snapshots.set(snapshotId, { cacheName, cache, requests: visibleRequests, expiresAt: Date.now() + SNAPSHOT_TTL_MS });
     setTimeout(() => snapshots.delete(snapshotId), SNAPSHOT_TTL_MS);
     const entries: CacheEntry[] = visibleRequests.map((request, index) => ({
       requestKey: `${snapshotId}:${index}`,
@@ -170,16 +170,14 @@ async function listCacheKeys(cacheName: string): Promise<Result<CacheInventory>>
 }
 
 async function details(cacheName: string, requestKey: string, preview: boolean, full: boolean): Promise<Result<CacheDetails>> {
-  const [snapshotId, rawIndex] = requestKey.split(':');
+  const [snapshotId, rawIndex, extra] = requestKey.split(':');
   const snapshot = registry().get(snapshotId);
   const index = Number(rawIndex);
-  if (!snapshot || snapshot.cacheName !== cacheName || !Number.isInteger(index) || index < 0 || index >= snapshot.requests.length || snapshot.expiresAt < Date.now()) {
-    registry().delete(snapshotId);
+  if (extra !== undefined || !/^(0|[1-9]\d*)$/.test(rawIndex ?? '') || !snapshot || snapshot.cacheName !== cacheName || !Number.isSafeInteger(index) || index >= snapshot.requests.length || snapshot.expiresAt <= Date.now()) {
     return { ok: false, error: { code: 'stale-snapshot', message: 'Cache inventory expired; refresh the cache list' } };
   }
   try {
-    const cache = await openExistingCache(cacheName);
-    const response = await cache.match(snapshot.requests[index]);
+    const response = await snapshot.cache.match(snapshot.requests[index]);
     if (!response) return { ok: false, error: { code: 'stale-snapshot', message: 'Cached response changed; refresh the cache list' } };
     const result: Result<CacheDetails> = {
       ok: true,
