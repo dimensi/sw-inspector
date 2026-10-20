@@ -56,6 +56,24 @@
     else refreshButton?.focus();
   }
   let actionState = $state<ActionState>({ phase: 'idle', ticket: null, receipt: null, error: null });
+  const receiptCounts = $derived({
+    deleted: actionState.receipt?.items.filter(item => item.outcome === 'applied').length ?? 0,
+    absent: actionState.receipt?.items.filter(item => item.outcome === 'absent').length ?? 0,
+    failed: actionState.receipt?.items.filter(item => item.outcome === 'failed').length ?? 0,
+    skipped: actionState.receipt?.items.filter(item => item.outcome === 'skipped').length ?? 0,
+  });
+  const receiptSummary = $derived([
+    receiptCounts.deleted ? `Deleted ${receiptCounts.deleted} ${receiptCounts.deleted === 1 ? 'cache' : 'caches'}.` : '',
+    receiptCounts.absent ? `${receiptCounts.absent} already absent.` : '',
+    receiptCounts.failed ? `${receiptCounts.failed} could not be deleted.` : '',
+    receiptCounts.skipped ? `${receiptCounts.skipped} not attempted.` : '',
+  ].filter(Boolean).join(' '));
+  const receiptOutcome = { applied: 'Deleted', absent: 'Already absent', failed: 'Could not delete', skipped: 'Not attempted' };
+  function dismissActionResult() {
+    actions.cancel();
+    // The deletion opener may disappear or become disabled when its receipt refresh settles.
+    refreshButton?.focus();
+  }
   const actions = createActionController({
     invoke: command => transport.invoke(command),
     getPage: () => overview?.page ?? null,
@@ -316,23 +334,33 @@
   });
 </script>
 
+{#snippet actionResult()}
+  {#if actionState.phase === 'result'}
+    <section class="action-result" class:warning={!actionState.receipt || !!receiptCounts.skipped || (!!receiptCounts.failed && !!receiptCounts.deleted)} class:error={!!receiptCounts.failed && !receiptCounts.deleted} aria-label="Cache Storage action result">
+      <p class="action-summary" aria-live="polite">{actionState.receipt ? receiptSummary : actionState.error}</p>
+      {#if actionState.receipt}
+        {#key actionState.receipt.operationId}
+          <details class="action-details">
+            <summary>Details</summary>
+            <div class="action-detail-body">
+              <ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {receiptOutcome[item.outcome]}{item.message ? ` — ${item.message}` : ''}</li>{/each}</ul>
+              <p>The site may recreate caches.</p>
+            </div>
+          </details>
+        {/key}
+      {/if}
+      {#if !actionState.receipt || receiptCounts.failed || receiptCounts.skipped}<button class="action-refresh" onclick={() => { void refresh(); }} disabled={loading}>Refresh</button>{/if}
+      <button class="tool-button action-close" aria-label="Dismiss action result" title="Dismiss action result" onclick={dismissActionResult}><Icon name="close" size={12} /></button>
+    </section>
+  {/if}
+{/snippet}
+
 <main class="inspector">
 {#if actionState.ticket && (actionState.phase === 'confirming' || actionState.phase === 'running')}
   <ActionConfirmation ticket={actionState.ticket} busy={actionState.phase === 'running'} onconfirm={() => { void actions.confirm(); }} oncancel={actions.cancel} restoreFocus={restoreActionFocus} />
 {/if}
 
 
-  {#if actionState.phase === 'result'}
-    <section class="action-result" aria-label="Action result" aria-live="polite">
-      {#if actionState.receipt}
-        <strong>{actionState.receipt.status === 'partial' ? 'Action partially completed' : 'Action completed'}</strong>
-        {#if actionState.receipt.kind === 'delete-all-caches'}<p>{actionState.receipt.items.filter(item => item.outcome === 'applied').length} applied · {actionState.receipt.items.filter(item => item.outcome === 'absent').length} absent · {actionState.receipt.items.filter(item => item.outcome === 'failed').length} failed · {actionState.receipt.items.filter(item => item.outcome === 'skipped').length} skipped. The site may recreate caches.</p>{/if}
-        <ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {item.outcome}{item.message ? ` — ${item.message}` : ''}</li>{/each}</ul>
-      {:else}<p>{actionState.error}</p>{/if}
-      <button onclick={actions.cancel}>Dismiss</button>
-      {#if !actionState.receipt}<button onclick={() => { void refresh(); }}>Refresh</button>{/if}
-    </section>
-  {/if}
   <header class="toolbar">
     <button bind:this={refreshButton} class="tool-button" onclick={() => { void refresh(); }} disabled={loading} title="Read a fresh snapshot of the inspected page"><Icon name="refresh" /><span>{loading ? 'Refreshing…' : 'Refresh'}</span></button>
     <button class="tool-button" onclick={downloadReport} disabled={!overview} title="Export diagnostic metadata as JSON"><Icon name="export" /><span>Export</span></button>
@@ -376,6 +404,8 @@
         <div class="notice error" role="alert"><Icon name="warning" /><div><strong>Inspection failed</strong><p>{inspectionError}</p>{#if inspectionError.includes('does not have access')}<p>Click SW Inspector in Safari’s toolbar to allow this tab, then refresh.</p>{/if}</div></div>
       {/if}
 
+      {#if view !== 'cache' && view !== 'caches'}{@render actionResult()}{/if}
+
       {#if view === 'workers'}
         <div class="pane-toolbar"><h1>Service Workers</h1><span class="secondary">{overview ? `${overview.registrations.length} registered` : 'Not inspected'}</span></div>
         <div class="content-scroll">
@@ -410,6 +440,7 @@
 
       {:else if view === 'caches'}
         <div class="pane-toolbar cache-toolbar"><h1>Cache Storage</h1><span class="secondary">{overview?.caches.length ?? '—'} namespaces</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-all-caches' }); }} disabled={!overview?.page || !overview.caches.length || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete all caches…</button></div>
+        {@render actionResult()}
         {#if operationError?.area === 'cache'}<p class="notice error" role="alert">{operationError.message}</p>{/if}
         <div class="table-scroll">
           <table class="data-table cache-table"><thead><tr><th scope="col">Name</th><th scope="col" class="number-cell">Keys</th><th scope="col">Inventory</th></tr></thead><tbody>
@@ -420,6 +451,7 @@
 
       {:else if view === 'cache'}
         <div class="pane-toolbar cache-toolbar"><h1 title={requestedCache}>{requestedCache}</h1><span class="secondary">{selectedInventory ? `${selectedInventory.totalEntries} keys` : 'Loading…'}</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-cache', cacheName: requestedCache }); }} disabled={!overview?.page || !selectedInventory || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete cache…</button><button onclick={measure} disabled={!selectedInventory || working.startsWith('measure:')}>{working.startsWith('measure:') ? 'Measuring…' : 'Measure bodies'}</button>{#if working.startsWith('measure:')}<button onclick={stopMeasurement}>Stop updates</button>{/if}</div>
+        {@render actionResult()}
         {#if operationError?.area === 'cache' || operationError?.area === 'measure'}<p class="notice error" role="alert">{operationError.message}</p>{/if}
         {#if selectedInventory?.partial}<p class="notice warning">Partial inventory: first 1,500 keys shown.</p>{/if}
         <div class="cache-workspace">
@@ -477,8 +509,16 @@
 </main>
 
 <style>
-  .action-result { flex-shrink: 0; max-height: 35dvh; overflow: auto; padding: 7px 10px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
-  .action-result p, .action-result ul { margin: 0 0 6px; }
+  .action-result { position: relative; flex: none; min-height: 33px; padding: 8px 10px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; font-size: 11px; }
+  .action-summary { padding-right: 90px; }
+  .action-details > summary { position: absolute; top: 7px; right: 36px; cursor: default; }
+  .action-close { position: absolute; top: 4px; right: 5px; width: 24px; padding: 2px; }
+  .action-detail-body { max-height: 25dvh; overflow: auto; margin-top: 8px; }
+  .action-detail-body ul { margin: 0 0 6px; padding-left: 18px; }
+  .action-detail-body li + li { margin-top: 3px; }
+  .action-refresh { margin-top: 6px; }
+  .action-result.warning { color: var(--warning); background: var(--warning-bg); }
+  .action-result.error { color: var(--error); background: var(--error-bg); }
   :global(*) { box-sizing: border-box; }
   :global(html) { color-scheme: light dark; }
   :global(body) { margin: 0; font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
