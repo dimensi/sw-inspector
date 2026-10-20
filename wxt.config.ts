@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: 'SW Inspector',
     description: 'Inspect Service Workers, Cache Storage, and offline readiness in Safari Web Inspector.',
-    version: '0.1.0',
+    version: '0.1.1',
     permissions: ['devtools', 'activeTab'],
     icons: {
       16: '/icons/16.png',

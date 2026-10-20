@@ -1,6 +1,6 @@
 {
   "name": "sw-inspector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Read-only Service Worker and Cache Storage diagnostics inside browser DevTools",
