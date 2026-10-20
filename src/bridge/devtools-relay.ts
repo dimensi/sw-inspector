@@ -48,7 +48,9 @@ function matchesSender(runtime: RelayRuntime, sender: Sender, page: string, sess
   }
 }
 
-export function installDevtoolsRelay(runtime: RelayRuntime, devtools: Devtools, session: string): () => void {
+export type PanelLifecycleState = { hiddenEpoch: number };
+
+export function installDevtoolsRelay(runtime: RelayRuntime, devtools: Devtools, session: string, lifecycle: PanelLifecycleState = { hiddenEpoch: 0 }): () => void {
   async function evaluate(source: unknown) {
     let result: unknown = null;
     let error: EvalException | null = null;
@@ -69,8 +71,12 @@ export function installDevtoolsRelay(runtime: RelayRuntime, devtools: Devtools, 
   }
 
   const onMessage: RelayMessageListener = (message, sender, respond) => {
-    if (!isRecord(message) || message.kind !== 'sw-inspector/evaluate' || message.session !== session
-      || !matchesSender(runtime, sender, 'panel.html', session)) return;
+    if (!isRecord(message) || message.session !== session || !matchesSender(runtime, sender, 'panel.html', session)) return;
+    if (message.kind === 'sw-inspector/panel-activation') {
+      respond({ kind: 'sw-inspector/panel-activation', session, epoch: lifecycle.hiddenEpoch });
+      return true;
+    }
+    if (message.kind !== 'sw-inspector/evaluate') return;
     void evaluate(message.source).then(respond).catch(() => { /* The panel may have closed. */ });
     return true;
   };
@@ -91,21 +97,30 @@ type PanelEvent = {
   removeListener(listener: () => void): void;
 };
 
-export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onShown: PanelEvent; onHidden: PanelEvent }, session: string): () => void {
+export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onShown: PanelEvent; onHidden: PanelEvent }, session: string, lifecycle: PanelLifecycleState = { hiddenEpoch: 0 }): () => void {
   let visible = false;
-  let opened = false;
   let disposed = false;
   const onShown = () => {
     if (disposed || visible) return;
     visible = true;
-    if (!opened) { opened = true; return; } // Mount owns the initial snapshot.
+    if (lifecycle.hiddenEpoch === 0) return; // Mount owns the initial snapshot.
     void Promise.resolve().then(() => {
-      if (!disposed) return runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session });
+      if (disposed) return;
+      return runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session, epoch: lifecycle.hiddenEpoch });
     }).catch(() => { /* The panel may have closed. */ });
   };
-  const onHidden = () => { visible = false; };
-  panel.onShown.addListener(onShown);
-  panel.onHidden.addListener(onHidden);
+  const onHidden = () => {
+    lifecycle.hiddenEpoch += 1;
+    visible = false;
+  };
+  try {
+    panel.onShown.addListener(onShown);
+    panel.onHidden.addListener(onHidden);
+  } catch {
+    panel.onShown?.removeListener(onShown);
+    panel.onHidden?.removeListener(onHidden);
+    return () => {};
+  }
   return () => {
     disposed = true;
     panel.onShown.removeListener(onShown);
@@ -115,6 +130,11 @@ export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onSh
 
 export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeoutMs = 15_000) {
   const session = new URL(panelUrl).searchParams.get('session');
+  let appliedEpoch = 0;
+  let activationGeneration = 0;
+  let initializing = false;
+  let initialized = true;
+  let initialization: Promise<void> = Promise.resolve();
 
   const evaluate: EvalFn = async (source) => {
     try {
@@ -139,16 +159,68 @@ export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeou
   function subscribe(kind: string, listener: () => void): () => void {
     if (!session) return () => {};
     const onMessage: RelayMessageListener = (message, sender) => {
-      if (isRecord(message) && message.kind === kind && message.session === session
-        && matchesSender(runtime, sender, 'devtools.html')) listener();
+      if (!isRecord(message) || message.kind !== kind) return;
+      if (message.session !== session || !matchesSender(runtime, sender, 'devtools.html')) return;
+      if (kind === 'sw-inspector/panel-returned') {
+        if (!initializing && initialized) applyPanelEpoch(message.epoch, listener);
+      } else listener();
       return undefined;
     };
     runtime.onMessage.addListener(onMessage);
     return () => runtime.onMessage.removeListener(onMessage);
   }
 
+  function applyPanelEpoch(epoch: unknown, listener: () => void) {
+    if (typeof epoch !== 'number' || !Number.isSafeInteger(epoch) || epoch < 0 || epoch <= appliedEpoch) return;
+    appliedEpoch = epoch;
+    listener();
+  }
+
+  async function queryPanelEpoch(): Promise<number> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        Promise.resolve().then(() => runtime.sendMessage({ kind: 'sw-inspector/panel-activation', session })),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Panel activation timed out')), timeoutMs); }),
+      ]);
+      if (!session || !isRecord(response) || response.kind !== 'sw-inspector/panel-activation' || response.session !== session
+        || typeof response.epoch !== 'number' || !Number.isSafeInteger(response.epoch) || response.epoch < 0) throw new Error('Invalid panel activation response');
+      return response.epoch;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function initializePanelActivation() {
+    if (initializing) return initialization;
+    initializing = true;
+    initialized = false;
+    initialization = queryPanelEpoch().then((epoch) => {
+      appliedEpoch = epoch;
+      initialized = true;
+    }).catch(() => { /* A later active event may re-establish the baseline. */ }).finally(() => { initializing = false; });
+    return initialization;
+  }
+
+  async function requestPanelActivation(listener: () => void, isActive: () => boolean) {
+    const generation = ++activationGeneration;
+    if (!isActive()) return;
+    if (!initialized && !initializing) void initializePanelActivation();
+    await initialization;
+    if (!initialized || generation !== activationGeneration || !isActive()) return;
+    try {
+      const epoch = await queryPanelEpoch();
+      if (generation === activationGeneration && isActive()) applyPanelEpoch(epoch, listener);
+    } catch {
+      // Manual Refresh remains available; a later activation can query again.
+    }
+  }
+
   return {
     evaluate,
+    initializePanelActivation,
+    requestPanelActivation,
+    cancelPanelActivation: () => { activationGeneration += 1; },
     subscribeNavigation: (listener: () => void) => subscribe('sw-inspector/navigated', listener),
     subscribePanelReturn: (listener: () => void) => subscribe('sw-inspector/panel-returned', listener),
   };

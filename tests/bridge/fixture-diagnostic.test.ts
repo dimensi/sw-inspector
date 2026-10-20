@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createContext, runInContext } from 'node:vm';
 import { expect, it } from 'vitest';
+import { createPanelRelay } from '../../src/bridge/devtools-relay';
 import { createTransport } from '../../src/bridge/transport';
 import type { Overview } from '../../src/domain/types';
 import { createJobStartExpression, createJobPollExpression } from '../../src/bridge/expressions';
@@ -51,4 +52,22 @@ it('explicit refresh reads external changes and a same-URL replacement without a
   expect(reloaded.page.url).toBe(before.page.url);
   expect(reloaded.caches).toEqual([]);
   expect(reloaded.registrations).toEqual([]);
+});
+
+
+it('synthetic fixture supports production activation epochs without evaluating activation messages', async () => {
+  const realm = createContext({ window: {}, location: { origin: 'http://127.0.0.1:4186' }, crypto, EventTarget, Request, Response, URL, setTimeout: () => 0 });
+  runInContext(readFileSync('.impeccable/preview/fixture.js', 'utf8'), realm);
+  runInContext('globalThis.previewControl = window.previewControl', realm);
+  const relay = createPanelRelay(realm.window.browser.runtime, 'http://127.0.0.1:4186/panel.html?session=preview');
+  const refresh = () => { refreshed += 1; };
+  let refreshed = 0;
+  await relay.initializePanelActivation();
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refreshed).toBe(0);
+  realm.window.previewControl.hiddenEpoch += 1;
+  await relay.requestPanelActivation(refresh, () => true);
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refreshed).toBe(1);
+  expect(realm.window.previewControl.calls).toEqual([]);
 });

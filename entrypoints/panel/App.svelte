@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
   import { browser } from 'wxt/browser';
-  import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn } from '../../src/bridge/eval-window';
+  import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn, initializePanelActivation, requestPanelActivation, cancelPanelActivation } from '../../src/bridge/eval-window';
   import { describeDevToolsBinding, type DevToolsNamespace } from '../../src/bridge/runtime-binding';
   import { createTransport } from '../../src/bridge/transport';
   import { formatBytes, formatStoragePercentage } from '../../src/domain/format';
@@ -202,6 +202,19 @@
   }
 
   onMount(() => {
+    void initializePanelActivation();
+    const isActive = () => document.visibilityState === 'visible' && document.hasFocus();
+    const onVisibility = () => {
+      if (isActive()) void requestPanelActivation(() => { void refresh(); }, isActive);
+      else cancelPanelActivation();
+    };
+    const onFocus = () => {
+      void requestPanelActivation(() => { void refresh(); }, isActive);
+    };
+    const onBlur = () => { cancelPanelActivation(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
     const onNavigated = () => {
       navigationGeneration += 1;
       transport.invalidate();
@@ -221,6 +234,10 @@
     const unsubscribeReturn = subscribePanelReturn(() => { void refresh(); });
     void refresh();
     return () => {
+      cancelPanelActivation();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
       unsubscribeNavigation();
       unsubscribeReturn();
       navigationGeneration += 1;

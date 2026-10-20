@@ -273,7 +273,7 @@ it('rejects forged return notifications and cancels queued notifications on disp
     { id: 'wrong', url: devtools.url },
     { id: 'extension-id', url: panel.url },
     { id: 'extension-id', url: 'https://extension-id/devtools.html' },
-  ]) listener({ kind: 'sw-inspector/panel-returned', session: 'one' }, sender, () => {});
+  ]) listener({ kind: 'sw-inspector/panel-returned', session: 'one', epoch: 1 }, sender, () => {});
   expect(refresh).not.toHaveBeenCalled();
   const onShown = event<() => void>();
   const onHidden = event<() => void>();
@@ -285,4 +285,179 @@ it('rejects forged return notifications and cancels queued notifications on disp
   await Promise.resolve();
   expect(refresh).not.toHaveBeenCalled();
   unsubscribe();
+});
+
+
+it('recognizes the first return when the initial show preceded listener attachment', async () => {
+  const endpoint = messageBus();
+  const devtools = endpoint('devtools.html');
+  const panel = endpoint('panel.html?session=one');
+  const refresh = vi.fn();
+  const unsubscribe = createPanelRelay(panel.runtime, panel.url).subscribePanelReturn(refresh);
+  const onShown = event<() => void>();
+  const onHidden = event<() => void>();
+  const dispose = installPanelVisibilityRelay(devtools.runtime, { onShown, onHidden }, 'one');
+  // Panel creation can finish after its first native show; hide is the first observed event.
+  for (const listener of onHidden.listeners) listener();
+  await Promise.resolve();
+  expect(refresh).not.toHaveBeenCalled();
+  for (const listener of onShown.listeners) listener();
+  for (const listener of onShown.listeners) listener();
+  await Promise.resolve();
+  expect(refresh).toHaveBeenCalledOnce();
+  dispose();
+  unsubscribe();
+});
+
+
+it('removes partially attached visibility listeners if attachment fails', () => {
+  const endpoint = messageBus()('devtools.html');
+  const onShown = event<() => void>();
+  const dispose = installPanelVisibilityRelay(endpoint.runtime, {
+    onShown,
+    onHidden: { addListener: () => { throw new Error('native attach failed'); }, removeListener: () => {} },
+  }, 'one');
+  expect(onShown.listeners.size).toBe(0);
+  dispose();
+});
+
+it('uses native hide epochs to gate and deduplicate focused document activation', async () => {
+  const endpoint = messageBus();
+  const devtools = endpoint('devtools.html');
+  const panel = endpoint('panel.html?session=one');
+  const lifecycle = { hiddenEpoch: 0 };
+  const disposeHost = installDevtoolsRelay(devtools.runtime, {
+    inspectedWindow: { eval: vi.fn() }, network: { onNavigated: event<() => void>() },
+  }, 'one', lifecycle);
+  const onShown = event<() => void>();
+  const onHidden = event<() => void>();
+  const disposeVisibility = installPanelVisibilityRelay(devtools.runtime, { onShown, onHidden }, 'one', lifecycle);
+  const relay = createPanelRelay(panel.runtime, panel.url);
+  const refresh = vi.fn();
+  const unsubscribe = relay.subscribePanelReturn(refresh);
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).not.toHaveBeenCalled();
+  for (const hide of onHidden.listeners) hide();
+  await relay.requestPanelActivation(refresh, () => true);
+  await relay.requestPanelActivation(refresh, () => true);
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session: 'one', epoch: 1 });
+  expect(refresh).toHaveBeenCalledOnce();
+  for (const hide of onHidden.listeners) hide();
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session: 'one', epoch: 2 });
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).toHaveBeenCalledTimes(2);
+  unsubscribe(); disposeVisibility(); disposeHost();
+});
+
+it('rejects late document activation after blur, disposal, or failed focus recheck', async () => {
+  const panel = messageBus()('panel.html?session=one');
+  let reply!: (value: unknown) => void;
+  panel.runtime.sendMessage = () => new Promise(resolve => { reply = resolve; });
+  const relay = createPanelRelay(panel.runtime, panel.url);
+  const refresh = vi.fn();
+  let focused = true;
+  const pending = relay.requestPanelActivation(refresh, () => focused);
+  await Promise.resolve(); await Promise.resolve();
+  focused = false;
+  reply({ kind: 'sw-inspector/panel-activation', session: 'one', epoch: 1 });
+  await pending;
+  expect(refresh).not.toHaveBeenCalled();
+  focused = true;
+  const next = relay.requestPanelActivation(refresh, () => focused);
+  await Promise.resolve(); await Promise.resolve();
+  relay.cancelPanelActivation();
+  reply({ kind: 'sw-inspector/panel-activation', session: 'one', epoch: 1 });
+  await next;
+  expect(refresh).not.toHaveBeenCalled();
+  panel.runtime.sendMessage = async () => ({ kind: 'sw-inspector/panel-activation', session: 'one', epoch: 1 });
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+
+it('baselines an already-opened host epoch on remount without duplicating its initial snapshot', async () => {
+  const panel = messageBus()('panel.html?session=one');
+  let epoch = 4;
+  panel.runtime.sendMessage = async () => ({ kind: 'sw-inspector/panel-activation', session: 'one', epoch });
+  const relay = createPanelRelay(panel.runtime, panel.url);
+  const refresh = vi.fn();
+  const initialization = relay.initializePanelActivation();
+  const focus = relay.requestPanelActivation(refresh, () => true);
+  await initialization; await focus;
+  expect(refresh).not.toHaveBeenCalled();
+  epoch = 5;
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+it.each([
+  { kind: 'wrong', session: 'one', epoch: 1 },
+  { kind: 'sw-inspector/panel-activation', session: 'wrong', epoch: 1 },
+  { kind: 'sw-inspector/panel-activation', session: 'one', epoch: -1 },
+  { kind: 'sw-inspector/panel-activation', session: 'one', epoch: 1.5 },
+])('fails closed for malformed activation replies: %j', async response => {
+  const panel = messageBus()('panel.html?session=one');
+  panel.runtime.sendMessage = async () => response;
+  const relay = createPanelRelay(panel.runtime, panel.url);
+  const refresh = vi.fn();
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).not.toHaveBeenCalled();
+  panel.runtime.sendMessage = async () => ({ kind: 'sw-inspector/panel-activation', session: 'one', epoch: 1 });
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+it('bounds a hung activation query without refreshing or consuming an epoch', async () => {
+  vi.useFakeTimers();
+  const panel = messageBus()('panel.html?session=one');
+  panel.runtime.sendMessage = () => new Promise(() => {});
+  const relay = createPanelRelay(panel.runtime, panel.url, 20);
+  const refresh = vi.fn();
+  const pending = relay.requestPanelActivation(refresh, () => true);
+  await vi.advanceTimersByTimeAsync(20);
+  await pending;
+  expect(refresh).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+
+it('recovers a failed mount baseline on a later activation without polling or a duplicate initial snapshot', async () => {
+  const panel = messageBus()('panel.html?session=one');
+  let fail = true;
+  let epoch = 3;
+  panel.runtime.sendMessage = async () => {
+    if (fail) throw new Error('temporary unavailable');
+    return { kind: 'sw-inspector/panel-activation', session: 'one', epoch };
+  };
+  const relay = createPanelRelay(panel.runtime, panel.url);
+  const refresh = vi.fn();
+  await relay.initializePanelActivation();
+  fail = false;
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).not.toHaveBeenCalled();
+  epoch = 4;
+  await relay.requestPanelActivation(refresh, () => true);
+  expect(refresh).toHaveBeenCalledOnce();
+});
+
+
+it('authenticates activation queries and returns only the epoch without native eval', async () => {
+  const endpoint = messageBus();
+  const devtools = endpoint('devtools.html');
+  const panel = endpoint('panel.html?session=one');
+  const nativeEval = vi.fn();
+  const dispose = installDevtoolsRelay(devtools.runtime, {
+    inspectedWindow: { eval: nativeEval }, network: { onNavigated: event<() => void>() },
+  }, 'one', { hiddenEpoch: 2 });
+  const [listener] = devtools.messages.listeners;
+  const respond = vi.fn();
+  for (const sender of [
+    { id: 'wrong', url: panel.url },
+    { id: 'extension-id', url: 'https://extension-id/panel.html?session=one' },
+    { id: 'extension-id', url: 'safari-web-extension://extension-id/panel.html?session=wrong' },
+  ]) expect(listener({ kind: 'sw-inspector/panel-activation', session: 'one' }, sender, respond)).toBeUndefined();
+  expect(respond).not.toHaveBeenCalled();
+  await expect(panel.runtime.sendMessage({ kind: 'sw-inspector/panel-activation', session: 'one' })).resolves.toEqual({ kind: 'sw-inspector/panel-activation', session: 'one', epoch: 2 });
+  expect(nativeEval).not.toHaveBeenCalled();
+  dispose();
 });

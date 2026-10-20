@@ -1,1 +1,0 @@
-import{i as e,n as t,r as n}from"./devtools-relay-D3E0Mjek.js";var r=crypto.randomUUID(),i=t(e.runtime,e.devtools,r),a=!1,o=()=>{};addEventListener(`pagehide`,()=>{a=!0,o(),i()},{once:!0}),e.devtools.panels.create(`SW Inspector`,`/icons/toolbar.svg`,`panel.html?session=${encodeURIComponent(r)}`).then(t=>{a||(o=n(e.runtime,t,r))});

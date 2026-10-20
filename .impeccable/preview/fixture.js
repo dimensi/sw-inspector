@@ -14,11 +14,12 @@
   const fakeNavigator = {serviceWorker:{controller:worker,getRegistrations:async () => [{scope:origin+'/',active:worker,waiting:null,installing:null}]},storage:{estimate:async()=>({usage:9243650,quota:10737418240})}};
   const lifecycle = new EventTarget();
   const scope = {caches:cacheAPI,addEventListener:lifecycle.addEventListener.bind(lifecycle),removeEventListener:lifecycle.removeEventListener.bind(lifecycle)};
-  window.previewControl = {denied:false,calls:[],listeners:new Set()};
+  window.previewControl = {denied:false,calls:[],listeners:new Set(),hiddenEpoch:0};
   const evaluate = (source) => new Function('globalThis','navigator','caches','location',`return (${source});`)(scope,fakeNavigator,cacheAPI,{origin,href:origin+'/'});
   window.browser = {
     runtime:{id:'synthetic-ui-fixture',getURL:path=>new URL(path,location.origin).href,onMessage:{addListener:listener=>previewControl.listeners.add(listener),removeListener:listener=>previewControl.listeners.delete(listener)},
       async sendMessage(message) {
+        if (message.kind === 'sw-inspector/panel-activation') return {kind:'sw-inspector/panel-activation',session:message.session,epoch:previewControl.hiddenEpoch};
         previewControl.calls.push(message.source);
         if (previewControl.denied) return {kind:'sw-inspector/evaluated',session:message.session,result:null,exception:{isException:true,value:'Invalid call to devtools.inspectedWindow.eval(). This extension does not have access to this tab.'}};
         try {return {kind:'sw-inspector/evaluated',session:message.session,result:evaluate(message.source)??null,exception:null};}
