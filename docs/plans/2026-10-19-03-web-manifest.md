@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** M1 code-complete (2026-10-21); M2–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1–M2 code-complete (2026-10-21); M3–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -101,18 +101,18 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 **Files:** изменить `src/manifest/page-runner.ts`; создать `tests/manifest/fetch.test.ts`.
 **Interfaces:** ветка `manifest:fetch` использует только сохранённый `snapshotId`, возвращает `Result<ManifestFetch>`.
 
-- [ ] Добавить failing tests `bounded-body`, `stream-timeout`, `credentials`, `redirect`, `stale-before-fetch`, `stale-after-await`; запуск: `rtk proxy pnpm exec vitest run tests/manifest/fetch.test.ts` → FAIL.
-- [ ] До fetch проверить `context.isCurrent(expectedPage)`, snapshot.page, TTL, что retained element всё ещё первый и его href/resolved URL/crossOrigin/referrerPolicy совпадают. При несовпадении `fetch` не вызывается.
-- [ ] Выполнить один `fetch(url, { mode: 'cors', credentials, redirect: 'follow', cache: 'default', referrerPolicy, signal })`; `credentials = 'include'` только для нормализованного `use-credentials`, иначе `'same-origin'`. Дополнительных headers/retries нет.
-- [ ] Общий timer 8000 ms запускается до fetch и охватывает headers + stream. Controller включён в runtime.controllers, удаляется в finally; timer очищается; reader отменяется при лимите/ошибке.
-- [ ] Считать фактические bytes chunks; 262144 принимаются, 262145 → `too-large`, `text` отсутствует. Не доверять Content-Length и не вызывать неограниченный `response.text()`/`json()`/`blob()`.
-- [ ] После fetch и каждого awaited body read повторить page/link проверки; stale result не возвращает source. Dispose вызывает abort. Проверить no publication после navigation даже при завершившемся Promise.
-- [ ] Сохранить requested/final URL, status, contentType, redirected; не-2xx → `http-error` без чтения body; fetch rejection → `network-error`, без догадки «CORS blocked». Opaque/null body → `unreadable`.
-- [ ] Для loaded требовать непустой валидный HTTP(S) response.url; иначе failed/unreadable. Это гарантирует строковый finalURL без догадок о redirect base на входе parser.
-- [ ] Abort классифицировать по причине: page disposal/смена identity → внешний stale-result; собственный deadline → failed/timeout; остальные fetch failures → failed/network-error. Не превращать отмену в HTTP status 0.
-- [ ] Decode UTF-8 после полного bounded read; неправильный MIME не мешает показать source, но parser добавит замечание. Текст хранится только в результате/UI, не в persistent storage или export.
-- [ ] Проверки: задержанный stream завершается на 8000 ms; `reader.cancel`/abort вызываются; redirect base берётся из response.url; anonymous/absent crossorigin дают same-origin, use-credentials даёт include.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/manifest/discovery.test.ts tests/manifest/fetch.test.ts` → PASS. Review gate: ошибка операции не меняет состояние worker/cache inspection.
+- [x] Добавить failing tests `bounded-body`, `stream-timeout`, `credentials`, `redirect`, `stale-before-fetch`, `stale-after-await`; запуск: `rtk proxy pnpm exec vitest run tests/manifest/fetch.test.ts` → FAIL.
+- [x] До fetch проверить `context.isCurrent(expectedPage)`, snapshot.page, TTL, что retained element всё ещё первый и его href/resolved URL/crossOrigin/referrerPolicy совпадают. При несовпадении `fetch` не вызывается.
+- [x] Выполнить один `fetch(url, { mode: 'cors', credentials, redirect: 'follow', cache: 'default', referrerPolicy, signal })`; `credentials = 'include'` только для нормализованного `use-credentials`, иначе `'same-origin'`. Дополнительных headers/retries нет.
+- [x] Общий timer 8000 ms запускается до fetch и охватывает headers + stream. Controller включён в runtime.controllers, удаляется в finally; timer очищается; reader отменяется при лимите/ошибке.
+- [x] Считать фактические bytes chunks; 262144 принимаются, 262145 → `too-large`, `text` отсутствует. Не доверять Content-Length и не вызывать неограниченный `response.text()`/`json()`/`blob()`.
+- [x] После fetch и каждого awaited body read повторить page/link проверки; stale result не возвращает source. Dispose вызывает abort. Проверить no publication после navigation даже при завершившемся Promise.
+- [x] Сохранить requested/final URL, status, contentType, redirected; не-2xx → `http-error` без чтения body; fetch rejection → `network-error`, без догадки «CORS blocked». Opaque/null body → `unreadable`.
+- [x] Для loaded требовать непустой валидный HTTP(S) response.url; иначе failed/unreadable. Это гарантирует строковый finalURL без догадок о redirect base на входе parser.
+- [x] Abort классифицировать по причине: page disposal/смена identity → внешний stale-result; собственный deadline → failed/timeout; остальные fetch failures → failed/network-error. Не превращать отмену в HTTP status 0.
+- [x] Decode UTF-8 после полного bounded read; неправильный MIME не мешает показать source, но parser добавит замечание. Текст хранится только в результате/UI, не в persistent storage или export.
+- [x] Проверки: задержанный stream завершается на 8000 ms; `reader.cancel`/abort вызываются; redirect base берётся из response.url; anonymous/absent crossorigin дают same-origin, use-credentials даёт include.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/manifest/discovery.test.ts tests/manifest/fetch.test.ts` → PASS. Review gate: ошибка операции не меняет состояние worker/cache inspection.
 
 ### M3: Чистый parser и честные derived values
 
