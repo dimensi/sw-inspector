@@ -176,3 +176,33 @@ it('worker handlers survive serialization and hostile scope/scriptURL remain dat
   expect(registrations[1].unregister).toHaveBeenCalledTimes(1);
   expect(realm).not.toHaveProperty('injected');
 });
+
+
+it('serializes explicit message formatter/session runtime in fresh realm without sending', async () => {
+  const events = new EventTarget(); const sw = new EventTarget();
+  const add = vi.spyOn(sw, 'addEventListener'); const remove = vi.spyOn(sw, 'removeEventListener');
+  const realm = { crypto, navigator: { serviceWorker: sw }, TextEncoder,
+    location: { origin: 'https://messages.test', href: 'https://messages.test/' },
+    setTimeout: () => 0, clearTimeout: () => {},
+    addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) };
+  let sequence = 0;
+  async function run(command: InspectorCommand) {
+    const id = `messages-${++sequence}`;
+    expect(JSON.parse(runInNewContext(createJobStartExpression(command, id), realm))).toEqual({ jobId: id });
+    await new Promise(resolve => setImmediate(resolve));
+    const reply = JSON.parse(runInNewContext(createJobPollExpression(id), realm));
+    expect(reply.state).toBe('complete'); return reply.result;
+  }
+  const page = (await run({ type: 'page-context' })).value;
+  const opened = await run({ type: 'open-message-session', expectedPage: page });
+  expect(opened.ok).toBe(true); expect(add).not.toHaveBeenCalled();
+  const sessionId = opened.value.sessionId;
+  await run({ type: 'start-message-listener', expectedPage: page, sessionId });
+  await run({ type: 'start-message-listener', expectedPage: page, sessionId });
+  expect(add).toHaveBeenCalledTimes(2);
+  sw.dispatchEvent(new MessageEvent('message', { data: { html: '</script><img src=x>' } }));
+  expect(await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 })).toMatchObject({ ok: true, value: { nextSeq: 1, records: [{ text: '{"html":"</script><img src=x>"}', requestId: null }] } });
+  expect(await run({ type: 'prepare-action', expectedPage: page, intent: { kind: 'send-worker-message', sessionId, registrationId: 'none', workerId: 'none', slot: 'active', jsonText: '{}', reply: 'none' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  expect(await run({ type: 'stop-message-session', expectedPage: page, sessionId })).toEqual({ ok: true, value: { stopped: true } });
+  expect(remove).toHaveBeenCalledTimes(2);
+});

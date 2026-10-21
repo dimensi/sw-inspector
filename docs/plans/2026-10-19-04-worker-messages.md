@@ -6,7 +6,7 @@
 **Architecture:** Общий action controller для отправки; отдельная opt-in message session, bounded buffer и leased page listeners. Всё через текущий relay и start/poll, без перехвата browser protocol.
 **Tech Stack:** TypeScript/Svelte 5, ServiceWorker.postMessage, MessageChannel, ServiceWorkerContainer events, Vitest.
 **Spec:** [development design](2026-10-19-development-design.md), [00](2026-10-19-00-action-foundation.md), [02/W1 worker handles](2026-10-19-02-worker-management.md).
-**Status:** Planned. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
+**Status:** S1 code-complete (2026-10-21); S2–S4 planned. No Messages UI, send remains unsupported. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
 
 ## Global Constraints
 
@@ -51,6 +51,8 @@ type MessageBatch = { sessionId:string; records:MessageRecord[];
 
 `createMessageRunner(context:PageContext, formatPreview:typeof formatMessagePreview)` → `(command:MessagingCommand)=>Promise<Result<MessageSession|MessageBatch|{stopped:true}>>` в `src/messages/page-runner.ts`. `createMessageActions(context:PageContext, formatPreview:typeof formatMessagePreview):ActionHandlers` в `src/messages/page-actions.ts`. Внутренний MessageSessionRecord shared type в `src/messages/session-types.ts`: identity, id, expiresAt, nextSeq, dropped, rows, byteCount, listening, cleanup callbacks/owned ports. Record хранится в context.messages по sessionId; тип не пересылается.
 
+Внутренний runtime под `message:runtime:v1` владеет active record и одним lease timer на context; он создаётся один раз с одним dispose hook. Records по-прежнему доступны только по sessionId в context.messages. Record имеет internal `append` для общей ring accounting, cleanup Set и owned ports Set; это не public wire API. Новый open закрывает предыдущую session. Полная serialized row свыше128KiB отбрасывается до помещения в ring (слишком длинная metadata preflight до полного stringify), seq и dropped увеличиваются. Source URL не обрезается в ложную полную цель. Batch128KiB считает serialized row data, cursor остаётся последним возвращённым seq.
+
 Open session не ставит listeners и не посылает сообщения. Session создаётся только по Send/Start listening, не при mount. Start listener устанавливает addEventListener один раз. Read возвращает до **50 rows / 128 KiB** после afterSeq и продлевает lease; nextSeq = последний возвращённый seq (или прежний cursor), поэтому backlog не пропускается. dropped — накопительное число вытесненных rows, не количество unread; разрыв seq отображать явно. Stop закрывает listeners/owned ports и удаляет record. Expired/missing session → stale-target, никакого silent recreate.
 
 Успешный controller.open() запускает serial polling сразу, включая время confirmation: иначе 10-секундная lease истечёт раньше 30-секундного ticket. Это чтение нашего буфера, не включение ServiceWorkerContainer listener. При скрытии Messages polling прекращается по общему правилу.
@@ -60,10 +62,12 @@ Open session не ставит listeners и не посылает сообщен
 **Files:** create `src/messages/preview.ts`, `src/messages/session-types.ts`, `src/messages/page-runner.ts`, `tests/messages/preview.test.ts`, `tests/messages/session.test.ts`; modify expressions/commands.
 **Interfaces:** `formatMessagePreview(value:unknown):{text:string;truncated:boolean}` — self-contained serializable function. Для page factories передавать её явно при сборке expression (добавочный аргумент `formatPreview`), обычного import внутри stringified body недостаточно. JSON-safe значения показывать как JSON; BigInt, Date, Map/Set, Blob, ArrayBuffer/views/ports обозначать type+size, без чтения Blob bytes и чужих ports. Cycles = `[Circular]`; depth >6 или >1,000 visited nodes = truncated. Не вызывать пользовательский toJSON/getters.
 
-- [ ] Тесты valid primitive/null, malformed outgoing JSON, UTF-8 16KiB boundary с emoji, cyclic inbound, deep arrays, 10MiB string, binary object, HTML/script-like text. Проверить длину итогового UTF-8 preview ≤16KiB и truncated. Big input не stringify целиком перед обрезкой.
-- [ ] Тесты ring capacity500, total2MiB eviction, monotonic seq, pagination50/128KiB, explicit dropped counter. После Stop/expiry record и listeners отсутствуют. Read не возвращает rows другой session/document.
-- [ ] `rtk proxy pnpm exec vitest run tests/messages/preview.test.ts tests/messages/session.test.ts`: сначала новые FAIL, затем реализация, затем PASS. Timer использует expiresAt и fake clock; каждый read не создаёт ещё один бесконечный timer.
-- [ ] Проверить полный generated start/poll с сериализованным formatPreview в fresh realm; добавить тест в `tests/bridge/expressions.test.ts`.
+- [x] Тесты valid primitive/null, UTF-8 16KiB boundary с emoji, cyclic inbound, deep arrays, 10MiB string, binary object, HTML/script-like text. Проверить длину итогового UTF-8 preview ≤16KiB и truncated. Big input не stringify целиком перед обрезкой.
+- [x] Тесты ring capacity500, total2MiB eviction, monotonic seq, pagination50/128KiB, explicit dropped counter. После Stop/expiry record и listeners отсутствуют. Read не возвращает rows другой session/document.
+- [x] `rtk proxy pnpm exec vitest run tests/messages/preview.test.ts tests/messages/session.test.ts`: сначала новые FAIL, затем реализация, затем PASS. Timer использует expiresAt и fake clock; каждый read не создаёт ещё один бесконечный timer.
+- [x] Проверить полный generated start/poll с сериализованным formatPreview в fresh realm; добавить тест в `tests/bridge/expressions.test.ts`.
+
+**S1 scope note:** malformed/oversize outgoing JSON validation тестируется S2, где появляется prepare/send path; отдельный speculative public validator в S1 не добавлен. Runtime ownership и oversized-row drop уточнены выше без изменения публичных command/result interfaces. Send и Messages UI остаются неподключёнными; policy activation не выполнялась.
 
 ## S2 — Отправка JSON в конкретный worker
 

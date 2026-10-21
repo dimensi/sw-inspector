@@ -1,6 +1,6 @@
 # План развития SW Inspector
 
-Дата: 2026-10-19. Статус на 2026-10-21: **внутренний фундамент 00/A1–A4 code-complete; 01/C1–C3 code-complete; 02/W1–W6 code-complete (native Safari pending); 03/M1–M6 code-complete (native Safari pending); следующая задача реализации — 04/S1; native 01/C4 acceptance остаётся открытой**. Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)). Пользователь запросил планы, пригодные для выполнения небольшими моделями; этот каталог не означает, что функции уже доступны. Текущая поставка и её ограничения описаны в [PRODUCT.md](../../PRODUCT.md).
+Дата: 2026-10-19. Статус на 2026-10-21: **внутренний фундамент 00/A1–A4 code-complete; 01/C1–C3 code-complete; 02/W1–W6 code-complete (native Safari pending); 03/M1–M6 code-complete (native Safari pending); 04/S1 code-complete; следующая задача реализации — 04/S2; native 01/C4 acceptance остаётся открытой**. Native Safari acceptance A1 остаётся открытой ([проверки](../TESTING.md#a1-document-identity-and-routing--2026-10-20)). Пользователь запросил планы, пригодные для выполнения небольшими моделями; этот каталог не означает, что функции уже доступны. Текущая поставка и её ограничения описаны в [PRODUCT.md](../../PRODUCT.md).
 
 ## Что строим и в каком порядке
 

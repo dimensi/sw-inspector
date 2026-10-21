@@ -125,7 +125,7 @@ export const evaluateInspectedWindow = async source => {
   if (window.nightinventoryError && source.includes('"type":"list-cache-keys"')) return [null, { isException: true, value: 'Fixture inventory read rejected' }];
   if (window.nightholdContext && source.includes('"type":"page-context"')) await new Promise<void>(resolve => { window.nightreleaseContext = resolve; });
   if (window.nightoverviewError && source.includes('"type":"overview"')) return [null, { isException: true, value: 'Fixture overview read rejected' }];
-  if(window.nightExternalEval)return window.nightExternalEval(source);
+  if(window.nightExternalEnabled===true&&window.nightExternalEval)return window.nightExternalEval(source);
   try {
     const result = frame.contentWindow!.eval(source);
     if (window.nightmode === 'unknown' && source.includes('"type":"commit-action"')) return [null, { isException: true, value: 'Fixture lost commit acknowledgement' }];

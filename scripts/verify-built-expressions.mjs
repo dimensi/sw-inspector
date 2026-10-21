@@ -180,6 +180,7 @@ assert.equal(updateCalls, 1);
 // M4 executes the serialized DOM discovery and bounded fetch factory from this artifact.
 realm.URL = URL;
 realm.AbortController = AbortController;
+realm.TextEncoder = TextEncoder;
 const manifestElement = { rawHref: './manifest.webmanifest',
   getAttribute(name) { return name === 'href' ? this.rawHref : null; },
   get href() { return new URL(this.rawHref, 'https://fixture.test/').href; },
@@ -217,4 +218,37 @@ const staleManifest = await run({type:'manifest:fetch',expectedPage:page,snapsho
 assert.equal(staleManifest.ok, false);
 assert.equal(staleManifest.error.code, 'stale-result');
 assert.equal(manifestRequests, 1, 'Changed retained DOM link rejects before a new request');
-console.log(`PASS ${filename}: compiled start/poll, C1/C2/C3 retained cache contracts, W4 retained worker update/unregister and once-only commits, M4 DOM discovery/no-fetch, bounded manifest fetch/final URL/text and stale-link zero-request rejection`);
+// S1 proves serialized preview/session factories and opt-in listener cleanup.
+const workerEvents = new EventTarget();
+const ownedWorkerListeners = new Set();
+realm.navigator.serviceWorker.addEventListener = (type, listener) => {
+  ownedWorkerListeners.add(listener); workerEvents.addEventListener(type, listener);
+};
+realm.navigator.serviceWorker.removeEventListener = (type, listener) => {
+  ownedWorkerListeners.delete(listener); workerEvents.removeEventListener(type, listener);
+};
+const messageSession = await run({type:'open-message-session',expectedPage:page});
+assert.equal(messageSession.ok, true);
+assert.equal(ownedWorkerListeners.size, 0, 'Open alone installs no listener');
+const messageSessionId = messageSession.value.sessionId;
+const startMessageListener = {type:'start-message-listener',expectedPage:page,sessionId:messageSessionId};
+assert.equal((await run(startMessageListener)).ok, true);
+const listenerCount = ownedWorkerListeners.size;
+assert.ok(listenerCount > 0);
+assert.equal((await run(startMessageListener)).ok, true);
+assert.equal(ownedWorkerListeners.size, listenerCount, 'Repeated start installs no duplicate listeners');
+const incomingMessage = new Event('message');
+Object.defineProperty(incomingMessage,'data',{value:{text:'Hostile </script>\u2028\u2029',nested:{ok:true}}});
+Object.defineProperty(incomingMessage,'source',{value:{scriptURL:hostileWorkerURL}});
+workerEvents.dispatchEvent(incomingMessage);
+const messagesRead = await run({type:'read-message-events',expectedPage:page,sessionId:messageSessionId,afterSeq:0});
+assert.equal(messagesRead.ok, true);
+assert.equal(messagesRead.value.records.length, 1);
+assert.equal(messagesRead.value.records[0].direction, 'incoming');
+assert.equal(messagesRead.value.records[0].requestId, null);
+assert.ok(messagesRead.value.records[0].text.includes('Hostile </script>'));
+assert.equal(messagesRead.value.listening, true);
+assert.equal((await run({type:'stop-message-session',expectedPage:page,sessionId:messageSessionId})).value.stopped, true);
+assert.equal(ownedWorkerListeners.size, 0);
+assert.equal((await run({type:'read-message-events',expectedPage:page,sessionId:messageSessionId,afterSeq:0})).error.code, 'stale-target');
+console.log(`PASS ${filename}: compiled start/poll, C/W/M retained contracts, S1 opt-in message session/listener/preview/read/stop, no duplicate listener and stopped-session rejection`);
