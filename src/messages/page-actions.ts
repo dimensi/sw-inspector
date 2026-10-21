@@ -27,7 +27,7 @@ export function createMessageActions(context: PageContext, formatPreview: typeof
   return { 'send-worker-message': {
     async prepare(input) {
       if (input.kind !== 'send-worker-message') return reject('invalid-command', 'Invalid message action.');
-      if (input.reply !== 'none') return reject('unsupported', 'Port replies are not supported yet.');
+      if (input.reply === 'port' && typeof MessageChannel === 'undefined') return reject('unsupported', 'MessageChannel is unavailable.');
       if (input.jsonText.length > 16384 || new TextEncoder().encode(input.jsonText).byteLength > 16384) return reject('invalid-command', 'JSON must be at most 16 KiB UTF-8.');
       let value: unknown;
       try { value = JSON.parse(input.jsonText); } catch { return reject('invalid-command', 'Enter valid JSON.'); }
@@ -53,8 +53,54 @@ export function createMessageActions(context: PageContext, formatPreview: typeof
       validate(retained, isCurrent);
       if (!registrations.includes(retained.record.registration)) return reject('stale-target', 'Registration is no longer available.');
       const target = retained.worker.scriptURL;
-      try { retained.worker.postMessage(retained.value); }
-      catch { return [{ target, outcome: 'failed', message: 'Message could not be posted.' }]; }
+      let cleanup: (() => void) | undefined;
+      let channel: MessageChannel | undefined;
+      try {
+        if (retained.intent.reply === 'port') {
+          channel = new MessageChannel();
+          const port = channel.port1;
+          const session = retained.session;
+          let finished = false;
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const deadline = Date.now() + 5000;
+          const close = () => {
+            if (finished) return;
+            finished = true; clearTimeout(timer);
+            port.removeEventListener('message', message); port.removeEventListener('messageerror', messageerror);
+            session.cleanups.delete(close); session.ports.delete(port);
+            try { port.close(); } catch { /* Close remains terminal even if the endpoint was detached. */ }
+          };
+          const timeout = () => {
+            if (finished) return;
+            close();
+            session.append({ direction: 'system', sourceURL: target, requestId: retained.requestId,
+              text: 'No reply on the supplied port within 5 seconds. The message may have been handled.', truncated: false, status: 'reply-timeout' });
+          };
+          const message = (event: MessageEvent) => {
+            if (finished) return;
+            if (Date.now() >= deadline) { timeout(); return; }
+            close();
+            const preview = formatPreview(event.data);
+            session.append({ direction: 'reply', sourceURL: target, requestId: retained.requestId,
+              text: preview.text, truncated: preview.truncated, status: 'received' });
+          };
+          const messageerror = () => {
+            if (finished) return;
+            if (Date.now() >= deadline) { timeout(); return; }
+            close();
+            session.append({ direction: 'reply', sourceURL: target, requestId: retained.requestId,
+              text: 'Reply could not be deserialized.', truncated: false, status: 'message-error' });
+          };
+          cleanup = close; session.cleanups.add(close); session.ports.add(port);
+          port.addEventListener('message', message); port.addEventListener('messageerror', messageerror);
+          timer = setTimeout(timeout, 5000); port.start();
+          retained.worker.postMessage(retained.value, [channel.port2]);
+        } else retained.worker.postMessage(retained.value);
+      } catch {
+        cleanup?.();
+        try { channel?.port2.close(); } catch { /* Transfer may have detached the local endpoint. */ }
+        return [{ target, outcome: 'failed', message: 'Message could not be posted.' }];
+      }
       const preview = formatPreview(retained.value);
       retained.session.append({ direction: 'outgoing', sourceURL: target, requestId: retained.requestId,
         text: preview.text, truncated: preview.truncated, status: 'posted' });

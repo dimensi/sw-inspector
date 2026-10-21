@@ -6,7 +6,7 @@
 **Architecture:** Общий action controller для отправки; отдельная opt-in message session, bounded buffer и leased page listeners. Всё через текущий relay и start/poll, без перехвата browser protocol.
 **Tech Stack:** TypeScript/Svelte 5, ServiceWorker.postMessage, MessageChannel, ServiceWorkerContainer events, Vitest.
 **Spec:** [development design](2026-10-19-development-design.md), [00](2026-10-19-00-action-foundation.md), [02/W1 worker handles](2026-10-19-02-worker-management.md).
-**Status:** S1–S2 code-complete (2026-10-21); S3–S4 planned. No Messages UI; reply=none uses confirmed action tickets, port replies remain unsupported. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
+**Status:** S1–S3 code-complete (2026-10-21); S4 planned. No Messages UI or send policy activation; page-side sends and optional owned-port replies use confirmed action tickets. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
 
 ## Global Constraints
 
@@ -86,9 +86,11 @@ Open session не ставит listeners и не посылает сообщен
 **Files:** modify `src/messages/page-actions.ts`, `src/messages/page-runner.ts`; create `tests/messages/reply.test.ts`.
 **Interfaces:** reply='port' → создать MessageChannel, подписаться на собственный port1 до `worker.postMessage(value,[port2])`; никаких полей не добавлять в JSON. Worker должен сам ответить `event.ports[0].postMessage(value)`. Первый reply → row с тем же requestId; закрыть owned port1 и timer, локальную доступную сторону port2 при ошибке transfer. Не ждать reply внутри action handler: receipt фиксирует submission, результат поступает через read-message-events.
 
-- [ ] Тесты immediate reply, reply через4,999ms, no reply через5,000ms, messageerror, late reply, duplicate reply, exception during post/transfer. После всех terminal paths и session dispose закрыты наши ports/timers, нет второго reply/эффекта.
-- [ ] Тест `plain_client_message_is_not_correlated`: событие ServiceWorkerContainer.message не получает requestId даже если payload похож. Только выделенный port даёт correlation.
-- [ ] `rtk proxy pnpm exec vitest run tests/messages/reply.test.ts`: сначала FAIL, затем реализация и PASS. Timeout row text **“No reply on the supplied port within 5 seconds. The message may have been handled.”** Не говорить worker offline/unresponsive глобально.
+- [x] Тесты immediate reply, reply через4,999ms, no reply через5,000ms, messageerror, late reply, duplicate reply, exception during post/transfer. После всех terminal paths и session dispose закрыты наши ports/timers, нет второго reply/эффекта.
+- [x] Тест `plain_client_message_is_not_correlated`: событие ServiceWorkerContainer.message не получает requestId даже если payload похож. Только выделенный port даёт correlation.
+- [x] `rtk proxy pnpm exec vitest run tests/messages/reply.test.ts`: сначала FAIL, затем реализация и PASS. Timeout row text **“No reply on the supplied port within 5 seconds. The message may have been handled.”** Не говорить worker offline/unresponsive глобально.
+
+**S3 scope note:** listeners and owned reply timer are installed before the single raw post/port2 transfer. Submission receipt does not wait for a reply; first own-port result alone carries requestId. Every terminal path removes its cleanup/port record and closes port1; failed setup/transfer also closes available port2. Exact 5-second deadline is checked in callbacks, so a delayed timer cannot accept a late reply. UI/policy/native Safari acceptance remain S4.
 
 ## S4 — Явный приём сообщений страницы и UI
 

@@ -35,7 +35,7 @@ it.each(['active', 'waiting'] as const)('post_once_without_application_ack %s', 
 });
 it.each(['true', '42', '"hello"', '[1]', '{"x":1}'])('sends parsed JSON without envelope %s', async text => { const s = await setup('active', text); await s.commit(); expect(s.postMessage.mock.calls).toEqual([[JSON.parse(text)]]); });
 it.each(['{', '', ' '.repeat(16385), '"' + '😀'.repeat(4096) + '"'])('rejects malformed/oversize JSON', async text => { const s = await setup('active', text); expect(await s.commit()).toMatchObject({ ok: false, error: { code: 'invalid-command' } }); expect(s.postMessage).not.toHaveBeenCalled(); });
-it.each(['worker', 'session', 'ttl', 'redundant', 'registration', 'page', 'port'])('rejects invalid %s before effect', async mode => {
+it.each(['worker', 'session', 'ttl', 'redundant', 'registration', 'page'])('rejects invalid %s before effect', async mode => {
   const s = await setup();
   if (mode === 'worker') s.intent = Object.assign(s.intent, { workerId: 'other' });
   if (mode === 'session') s.context.messages.delete((s.intent as Extract<ActionIntent, { kind: 'send-worker-message' }>).sessionId);
@@ -43,7 +43,6 @@ it.each(['worker', 'session', 'ttl', 'redundant', 'registration', 'page', 'port'
   if (mode === 'redundant') s.worker.state = 'redundant';
   if (mode === 'registration') s.getRegistrations.mockResolvedValue([]);
   if (mode === 'page') location.href += 'changed';
-  if (mode === 'port') Object.assign(s.intent, { reply: 'port' });
   expect(await s.commit()).toMatchObject({ ok: false }); expect(s.postMessage).not.toHaveBeenCalled();
 });
 it.each(['slot', 'expiry', 'lookup-slot', 'lookup-page'])('revalidates commit %s', async mode => {

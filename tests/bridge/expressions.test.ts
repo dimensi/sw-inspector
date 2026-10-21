@@ -207,11 +207,11 @@ it('serializes explicit message formatter/session runtime in fresh realm without
   expect(remove).toHaveBeenCalledTimes(2);
 });
 
-it('serializes message action and formatter with raw hostile JSON and exactly one post', async () => {
+it.each(['none', 'port'] as const)('serializes message action with raw hostile JSON and exactly one post (%s)', async replyMode => {
   const events = new EventTarget(); const postMessage = vi.fn();
   const worker = { scriptURL: 'https://messages.test/sw.js', state: 'activated', postMessage };
   const registration = { scope: 'https://messages.test/', active: worker, waiting: null, installing: null };
-  const realm = { crypto, TextEncoder, navigator: { serviceWorker: { getRegistrations: async () => [registration], controller: null }, storage: { estimate: async () => ({}) } },
+  const realm = { crypto, TextEncoder, MessageChannel, navigator: { serviceWorker: { getRegistrations: async () => [registration], controller: null }, storage: { estimate: async () => ({}) } },
     caches: { keys: async () => [] }, location: { origin: 'https://messages.test', href: 'https://messages.test/' },
     setTimeout: () => 0, clearTimeout: () => {}, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) };
   let seq = 0;
@@ -223,11 +223,20 @@ it('serializes message action and formatter with raw hostile JSON and exactly on
   const overview = (await run({ type: 'overview' })).value; const page = overview.page;
   const selected = overview.registrations[0];
   const sessionId = (await run({ type: 'open-message-session', expectedPage: page })).value.sessionId;
+  if (replyMode === 'port') postMessage.mockImplementation((_value, ports: MessagePort[]) => { ports[0].postMessage('reply'); ports[0].close(); });
   const payload = '</script>\u2028<img src=x>'; const prepared = await run({ type: 'prepare-action', expectedPage: page,
-    intent: { kind: 'send-worker-message', sessionId, registrationId: selected.registrationId, workerId: selected.active.workerId, slot: 'active', jsonText: JSON.stringify(payload), reply: 'none' } });
+    intent: { kind: 'send-worker-message', sessionId, registrationId: selected.registrationId, workerId: selected.active.workerId, slot: 'active', jsonText: JSON.stringify(payload), reply: replyMode } });
   expect(postMessage).not.toHaveBeenCalled(); expect(prepared.ok).toBe(true);
   const commit = { type: 'commit-action' as const, expectedPage: page, ticketId: prepared.value.ticketId };
   expect(await run(commit)).toMatchObject({ ok: true, value: { items: [{ outcome: 'applied' }] } }); await run(commit);
-  expect(postMessage.mock.calls).toEqual([[payload]]);
-  expect(await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 })).toMatchObject({ ok: true, value: { records: [{ direction: 'outgoing', text: JSON.stringify(payload), status: 'posted' }] } });
+  if (replyMode === 'none') expect(postMessage.mock.calls).toEqual([[payload]]);
+  else {
+    expect(postMessage).toHaveBeenCalledOnce(); expect(postMessage.mock.calls[0][0]).toBe(payload); expect(postMessage.mock.calls[0][1]).toHaveLength(1);
+    let batch;
+    for (let i = 0; i < 50; i++) { batch = await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 }); if (batch.value.records.length === 2) break; }
+    expect(batch).toMatchObject({ ok: true, value: { records: [expect.objectContaining({ direction: 'outgoing' }), expect.objectContaining({ direction: 'reply', text: '"reply"' })] } });
+    expect(batch.value.records[0].requestId).toBe(batch.value.records[1].requestId);
+  }
+  expect(await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 })).toMatchObject({ ok: true, value: { records: expect.arrayContaining([{ seq: expect.any(Number), timestamp: expect.any(Number), sourceURL: worker.scriptURL, requestId: expect.any(String), truncated: false, direction: 'outgoing', text: JSON.stringify(payload), status: 'posted' }]) } });
+  await run({ type: 'stop-message-session', expectedPage: page, sessionId });
 });

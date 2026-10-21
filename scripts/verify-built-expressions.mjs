@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { MessageChannel, MessagePort } from 'node:worker_threads';
 
 const directory = new URL('../.output/safari-mv3/chunks/', import.meta.url);
 const filename = (await readdir(directory)).find(name => /^panel-.*\.js$/.test(name));
@@ -291,4 +292,57 @@ const staleSendResult = await run({type:'commit-action',expectedPage:page,ticket
 assert.equal(staleSendResult.error.code,'stale-target');
 assert.equal(postedMessages.length,2,'Same-URL replaced worker is never posted');
 assert.equal((await run({type:'stop-message-session',expectedPage:page,sessionId:sendSession.value.sessionId})).value.stopped,true);
-console.log(`PASS ${filename}: compiled C/W/M/S1 contracts, S2 exact active/waiting raw JSON posting and outgoing rows, duplicate commit once and replaced-worker zero-effect rejection`);
+// S3 uses a real MessageChannel primitive around the compiled reply factory.
+const constructedChannels = [];
+realm.MessagePort = MessagePort;
+realm.MessageChannel = function () {
+  const channel = new MessageChannel();
+  const tracked = {channel,port1Closes:0};
+  const close = channel.port1.close.bind(channel.port1);
+  channel.port1.close = () => {tracked.port1Closes++;close();};
+  constructedChannels.push(tracked);
+  return channel;
+};
+let portPosts = 0;
+secondRegistration.active.postMessage = (value,ports) => {
+  portPosts++;
+  assert.equal(value,17,'Port reply uses the original primitive payload');
+  assert.equal(ports.length,1);
+  assert.ok(ports[0] instanceof MessagePort);
+  ports[0].postMessage({reply:'first',value});
+  ports[0].postMessage({reply:'duplicate',value});
+  ports[0].close(); // The receiving mock owns this transferred side.
+};
+const portOverview = (await run({type:'overview'})).value.registrations[1];
+const portSession = (await run({type:'open-message-session',expectedPage:page})).value;
+await run({type:'start-message-listener',expectedPage:page,sessionId:portSession.sessionId});
+const portTicket = await run({type:'prepare-action',expectedPage:page,intent:{kind:'send-worker-message',
+  sessionId:portSession.sessionId,registrationId:portOverview.registrationId,workerId:portOverview.active.workerId,
+  slot:'active',jsonText:'17',reply:'port'}});
+assert.equal(portTicket.ok,true);
+const portCommit = {type:'commit-action',expectedPage:page,ticketId:portTicket.value.ticketId};
+const portReceipt = await run(portCommit);
+assert.equal(portReceipt.ok,true);
+assert.deepEqual(await run(portCommit),portReceipt);
+assert.equal(portPosts,1);
+let portRows;
+for(let attempt=0;attempt<10;attempt++) {
+  portRows=(await run({type:'read-message-events',expectedPage:page,sessionId:portSession.sessionId,afterSeq:0})).value.records;
+  if(portRows.some(row=>row.direction==='reply'))break;
+  await new Promise(resolve=>setImmediate(resolve));
+}
+const outgoingPortRow=portRows.find(row=>row.direction==='outgoing');
+const replyPortRows=portRows.filter(row=>row.direction==='reply');
+assert.equal(replyPortRows.length,1,'Only the first owned-port reply is recorded');
+assert.equal(replyPortRows[0].requestId,outgoingPortRow.requestId);
+assert.ok(replyPortRows[0].text.includes('first'));
+assert.ok(constructedChannels[0].port1Closes>=1,'Owned local port closes after terminal reply');
+const unrelatedMessage=new Event('message');
+Object.defineProperty(unrelatedMessage,'data',{value:{requestId:outgoingPortRow.requestId,reply:'ordinary client message'}});
+Object.defineProperty(unrelatedMessage,'source',{value:{scriptURL:hostileWorkerURL}});
+workerEvents.dispatchEvent(unrelatedMessage);
+const finalPortRows=(await run({type:'read-message-events',expectedPage:page,sessionId:portSession.sessionId,afterSeq:0})).value.records;
+assert.equal(finalPortRows.find(row=>row.direction==='incoming').requestId,null);
+assert.equal((await run({type:'stop-message-session',expectedPage:page,sessionId:portSession.sessionId})).value.stopped,true);
+assert.equal(ownedWorkerListeners.size,0);
+console.log(`PASS ${filename}: compiled C/W/M/S1/S2 contracts, S3 raw port transfer once, first reply correlation/duplicate suppression, local-port cleanup and uncorrelated container messages`);
