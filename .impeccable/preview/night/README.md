@@ -1,0 +1,7 @@
+# Overnight QA harness
+
+`rtk proxy node .impeccable/preview/night/server.mjs` serves port 5198. Start only for the first UI milestone and reuse one disposable browser until final cleanup. It mounts actual App with actual transport and generated expressions in a fresh iframe; only native eval/extension activation adapters are replaced. Real Cache Storage, Service Worker registration/update/unregister and MessageChannel APIs run on this isolated origin.
+
+`nightSetupWorkers()` explicitly creates two disposable scopes with the same script URL; nothing registers automatically. `nightWorkerCalls` records instrumented update/unregister API submissions, including test setup only until its final reset. `fetch('/fixture-version?v=2')` switches future worker script bytes; update never forces skipWaiting. The fixture worker replies through a supplied port, supports `{fixture:'silent'}` and `{fixture:'broadcast'}`. `nightSetManifest()` inserts a link without fetching through inspector; inspect server/browser requests when measuring no automatic fetch, since the browser may fetch a DOM manifest link itself.
+
+All inherited `night*` cache/reset/hold/error hooks are synthetic injection tools. They are not Safari evidence. Compiled panel route is `/compiled.html?session=night-compiled`. At final cleanup unregister only these disposable-origin registrations, remove fixture caches, close the single browser and stop this server. Keep the separate native fixture on 4174 available for the user.

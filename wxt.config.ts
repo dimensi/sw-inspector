@@ -4,7 +4,7 @@ export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   manifest: ({ browser }) => ({
     name: 'SW Inspector',
-    description: 'Inspect Service Workers and Cache Storage; explicitly delete confirmed cache namespaces or a selected entry.',
+    description: 'Inspect Service Workers and Cache Storage; confirm worker update/unregister and explicitly delete cache data.',
     version: '0.1.1',
     permissions: ['devtools', 'activeTab'],
     icons: {

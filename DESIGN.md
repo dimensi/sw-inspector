@@ -1,6 +1,6 @@
 ---
 name: SW Inspector
-description: Compact inspection workspace with explicit cache namespace and selected entry deletion for Safari Web Inspector
+description: Compact inspection workspace with explicit worker update/unregister and cache deletion for Safari Web Inspector
 colors:
   background: "#fff"
   chrome: "#f2f2f2"
@@ -253,6 +253,10 @@ A muted label column aligns against a primary-value column. Technical strings wr
 ### Notices and empty states
 
 Warnings and errors are full-width local strips with semantic color and plain text. Blank panes explain the next action in ordinary body copy. Partial inventory and measurement states remain explicit. The status bar reports the inspection state and the manual-refresh limitation without becoming a hero surface. For the recognized Safari tab-access denial, lead with **Allow access to this tab** and the toolbar/Refresh instruction; retain the original error under **Technical details**. Evaluation API, relay and other ambiguous failures keep their actual error and do not imply a permission diagnosis.
+
+### Worker actions
+
+The Service Workers toolbar uses a native registration select and neutral **Check for update** / **Unregister** buttons. Select by retained ID; a new registrations array clears selection. Use the common confirmation and compact local result with the actual update/unregister message. A snapshot-read error stays separate from the action outcome; disable stale management controls until a successful Refresh. Preserve dense property sections and wrap controls in the narrow dock. No new tokens are introduced.
 
 ### Cache action results
 

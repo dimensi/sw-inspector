@@ -57,6 +57,20 @@ describe('action controller', () => {
     it('cancel_cannot_cancel_running', async () => { const s = setup(); const pending = deferred<Result<unknown>>(); await s.controller.prepare(intent); s.invoke.mockImplementationOnce(() => pending.promise); const running = s.controller.confirm(); s.controller.cancel(); expect(s.state().phase).toBe('running'); pending.resolve({ ok: true, value: receipt }); await running; expect(s.state().receipt).toEqual(receipt); });
     it('current_page_change_prevents_commit', async () => { const s = setup(); await s.controller.prepare(intent); s.setPage({ ...page, documentId: 'document-2' }); await s.controller.confirm(); expect(s.invoke).toHaveBeenCalledTimes(1); expect(s.state().error).toContain('changed'); });
     it('changed_page_suppresses_late_commit', async () => { const s = setup(); const pending = deferred<Result<unknown>>(); await s.controller.prepare(intent); s.invoke.mockImplementationOnce(() => pending.promise); const running = s.controller.confirm(); s.setPage({ ...page, documentId: 'document-2' }); pending.resolve({ ok: true, value: receipt }); await running; expect(s.settled).not.toHaveBeenCalled(); expect(s.state().receipt).toBeNull(); expect(s.state().phase).toBe('idle'); });
+    it.each(['known', 'unknown'] as const)('worker %s settlement runs once and preserves its result during failed reread', async outcome => {
+        const s = setup();
+        s.prepared.kind = 'unregister-worker';
+        const workerReceipt: ActionReceipt = { ...receipt, kind: 'unregister-worker', items: [{ target: 'https://app.test/worker/', outcome: 'applied', message: 'Unregister request completed. Existing pages may remain controlled.' }] };
+        s.settled.mockRejectedValueOnce(new Error('snapshot failed'));
+        await s.controller.prepare({ kind: 'unregister-worker', registrationId: 'selected-id' });
+        s.invoke.mockResolvedValueOnce(outcome === 'known' ? { ok: true, value: workerReceipt } : { ok: false, error: { code: 'outcome-unknown', message: 'The action may have completed. Refresh to inspect the current state.' } });
+        await s.controller.confirm();
+        await s.controller.confirm();
+        expect(s.invoke).toHaveBeenCalledTimes(2);
+        expect(s.settled).toHaveBeenCalledExactlyOnceWith(outcome === 'known' ? workerReceipt : null);
+        expect(s.state().receipt).toEqual(outcome === 'known' ? workerReceipt : null);
+        expect(s.state().error).toBe(outcome === 'known' ? null : 'The action may have completed. Refresh to inspect the current state.');
+    });
     it('no_page_disables_prepare', async () => { const s = setup(); s.setPage(null); await s.controller.prepare(intent); expect(s.invoke).not.toHaveBeenCalled(); expect(s.state().phase).toBe('idle'); });
     it('unknown_settles_with_null_and_preserves_action_error', async () => { const s = setup(); await s.controller.prepare(intent); s.invoke.mockResolvedValueOnce({ ok: false, error: { code: 'outcome-unknown', message: 'May have completed. Refresh.' } }); await s.controller.confirm(); expect(s.settled).toHaveBeenCalledWith(null); expect(s.state().error).toBe('May have completed. Refresh.'); });
 });

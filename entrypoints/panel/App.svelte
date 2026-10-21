@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
+  import WorkerActions from './WorkerActions.svelte';
+  import type { ActionIntent, ActionReceipt } from '../../src/domain/actions';
   import ActionConfirmation from './ActionConfirmation.svelte';
   import { createActionController, type ActionState } from '../../src/ui/action-controller';
   import type { PageIdentity } from '../../src/domain/types';
@@ -52,6 +54,11 @@
     browser: (globalThis as { browser?: DevToolsNamespace }).browser,
     chrome: (globalThis as { chrome?: DevToolsNamespace }).chrome,
   });
+  let workerOperation = $state(false);
+  let workerReading = $state(false);
+  let workerHandlesStale = $state(false);
+  let workerReadError = $state<string | null>(null);
+  let workerActionPage: PageIdentity | null = null;
   let actionContextGeneration = 0;
   let actionTrigger: HTMLButtonElement | null = null;
   let entryActionCache: string | null = null;
@@ -84,6 +91,7 @@
     getPage: () => overview?.page ?? null,
     onState: state => { actionState = state; },
     onSettled: async (receipt) => {
+      if (workerOperation) { await reloadOverviewAfterWorkerAction(receipt); return; }
       if (!receipt) return;
       const expectedPage = overview?.page;
       if (!expectedPage) return;
@@ -164,7 +172,47 @@
       lastUpdated = new Date().toLocaleTimeString();
     },
   });
-  function resetActions() { actionContextGeneration += 1; entryActionCache = null; actions.reset(); }
+  async function reloadOverviewAfterWorkerAction(_receipt: ActionReceipt | null) {
+    const expectedPage = workerActionPage;
+    if (!expectedPage) return;
+    const navigation = navigationGeneration;
+    const actionContext = actionContextGeneration;
+    const operation = ++refreshGeneration;
+    const current = () => navigation === navigationGeneration && actionContext === actionContextGeneration && operation === refreshGeneration;
+    workerHandlesStale = true;
+    workerReading = true;
+    workerReadError = null;
+    try {
+      const context = await transport.invoke<PageIdentity>({ type: 'page-context' });
+      if (!current()) return;
+      if (!context.ok) { workerReadError = context.error.message; return; }
+      if (!samePage(context.value, expectedPage)) { workerReadError = 'The inspected page changed. Refresh to inspect the current state.'; return; }
+      const result = await transport.invoke<Overview>({ type: 'overview' });
+      if (!current()) return;
+      if (!result.ok) { workerReadError = result.error.message; return; }
+      if (!samePage(result.value.page, expectedPage)) { workerReadError = 'The inspected page changed. Refresh to inspect the current state.'; return; }
+      overview = result.value;
+      workerHandlesStale = false;
+      lastUpdated = new Date().toLocaleTimeString();
+    } finally { if (current()) workerReading = false; }
+  }
+  function prepareWorkerAction(intent: ActionIntent) {
+    if (!overview || workerHandlesStale || workerReading || loading) return;
+    workerOperation = true;
+    workerActionPage = { ...overview.page };
+    workerReadError = null;
+    actionTrigger = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    void actions.prepare(intent);
+  }
+  function resetActions() {
+    actionContextGeneration += 1;
+    entryActionCache = null;
+    workerActionPage = null;
+    workerOperation = false;
+    workerReading = false;
+    workerReadError = null;
+    actions.reset();
+  }
   function samePage(a: PageIdentity, b: PageIdentity) {
     return a.documentId === b.documentId && a.origin === b.origin && a.url === b.url;
   }
@@ -224,6 +272,7 @@
     measurementController = null;
     working = '';
     overview = null;
+    workerHandlesStale = true;
     lastUpdated = null;
     measurements = [];
     offlineChecks = [];
@@ -241,6 +290,7 @@
     loading = false;
     if (result.ok) {
       if (expectedPage && !samePage(result.value.page, expectedPage)) return;
+      workerHandlesStale = false;
       overview = result.value; lastUpdated = new Date().toLocaleTimeString();
     }
     else inspectionError = result.error.message;
@@ -384,7 +434,7 @@
 </script>
 
 {#snippet actionResult()}
-  {#if actionState.phase === 'result'}
+  {#if actionState.phase === 'result' && !workerOperation}
     <section class="action-result" class:warning={!actionState.receipt || !!receiptCounts.skipped || (!!receiptCounts.failed && !!receiptCounts.deleted)} class:error={!!receiptCounts.failed && !receiptCounts.deleted} aria-label="Cache Storage action result">
       <p class="action-summary" aria-live="polite">{actionState.receipt ? receiptSummary : actionState.error}</p>
       {#if actionState.receipt}
@@ -453,10 +503,31 @@
         <div class="notice error" role="alert"><Icon name="warning" /><div><strong>{inspectionFailure?.title}</strong><p>{inspectionFailure?.message}</p>{#if inspectionFailure?.technicalDetails}<details><summary>Technical details</summary><p>{inspectionFailure.technicalDetails}</p></details>{/if}</div></div>
       {/if}
 
-      {#if view !== 'cache' && view !== 'caches'}{@render actionResult()}{/if}
+      {#if view !== 'cache' && view !== 'caches' && view !== 'workers'}{@render actionResult()}{/if}
 
       {#if view === 'workers'}
-        <div class="pane-toolbar"><h1>Service Workers</h1><span class="secondary">{overview ? `${overview.registrations.length} registered` : 'Not inspected'}</span></div>
+        <div class="pane-toolbar worker-toolbar"><h1>Service Workers</h1><span class="secondary">{overview ? `${overview.registrations.length} registered` : 'Not inspected'}</span><span class="toolbar-space"></span>
+          <WorkerActions registrations={overview?.registrations ?? []} disabled={!overview || workerHandlesStale || workerReading || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'} onintent={prepareWorkerAction} />
+        </div>
+        {#if workerOperation && actionState.phase === 'result'}
+          <section class="action-result" class:warning={!actionState.receipt} class:error={actionState.receipt?.items.some(item => item.outcome === 'failed')} aria-label="Service Worker action result">
+            <div class="action-summary" aria-live="polite">
+              {#if actionState.receipt}{#each actionState.receipt.items as item, index (index)}<p>{item.message ?? item.outcome}</p>{/each}{:else}{actionState.error}{/if}
+            </div>
+            {#if actionState.receipt}
+              {#key actionState.receipt.operationId}
+                <details class="action-details">
+                  <summary>Details</summary>
+                  <div class="action-detail-body"><ul>{#each actionState.receipt.items as item, index (index)}<li><span class="mono">{item.target}</span>: {item.message ?? item.outcome}</li>{/each}</ul></div>
+                </details>
+              {/key}
+            {/if}
+            {#if !actionState.receipt || workerReadError}<button class="action-refresh" onclick={() => { void refresh(); }} disabled={loading}>Refresh</button>{/if}
+            <button class="tool-button action-close" aria-label="Dismiss action result" title="Dismiss action result" onclick={dismissActionResult}><Icon name="close" size={12} /></button>
+          </section>
+        {/if}
+        {#if workerReadError}<p class="notice error" role="alert">Snapshot refresh failed: {workerReadError}</p>{/if}
+        {#if workerReading}<p class="notice" role="status">Reading current registrations…</p>{/if}
         <div class="content-scroll">
           {#if !overview}
             <div class="empty-state"><strong>{loading ? 'Reading Service Workers…' : 'No snapshot'}</strong><p>Refresh to read registrations and storage for this page.</p></div>
@@ -622,6 +693,7 @@
   .diagnostic-navigation { margin-top: 16px; }
   .content { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; }
   .pane-toolbar { display: flex; align-items: center; gap: 10px; flex: none; min-height: 33px; padding: 4px 10px; border-bottom: 1px solid var(--border); background: var(--chrome); }
+  .worker-toolbar { flex-wrap: wrap; gap: 5px 10px; }
   .pane-toolbar h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pane-toolbar > .secondary { flex-shrink: 0; font-size: 11px; }
   .toolbar-space { flex: 1; }

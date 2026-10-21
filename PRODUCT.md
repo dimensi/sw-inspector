@@ -8,11 +8,11 @@ web
 
 ## Users
 
-Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state, and Cache Storage and explicitly delete selected entries or confirmed selected/listed Cache Storage namespaces without changing worker lifecycle.
+Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state and Cache Storage. Explicit actions check for worker updates, unregister a selected registration, or delete selected cache entries and confirmed selected/listed namespaces.
 
 ## Product Purpose
 
-SW Inspector is a diagnostic panel with direct selected entry deletion and confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
+SW Inspector is a diagnostic panel with explicit confirmed worker update/unregister, direct selected entry deletion and confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
 
 ## Operating Context
 
@@ -28,12 +28,13 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 - Explicit **Delete cache…** prepares a document-bound confirmation for one named namespace; Cancel has no effect. Results distinguish deleted, absent, failed, and unknown. The site may recreate a cache.
 - Explicit **Delete all caches…** prepares the full fixed list of at most 100 namespace names with origin and count. **Delete listed caches** deletes that list sequentially; newly created names are excluded. Per-name applied, absent, failed and skipped outcomes remain distinct. More than 100 names requires deleting individually.
 - Explicit **Delete entry** immediately deletes the selected entry using its retained Cache and Request, without a confirmation dialog. It still prepares a fresh document-bound ticket before committing once. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
-- No worker lifecycle controls, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
+- Explicit **Check for update** and **Unregister** use document-bound confirmation and retained registration references. Update may download/install a worker; completion does not guarantee activation. Unregister may leave existing pages controlled and does not delete Cache Storage. Unknown outcomes are never retried automatically.
+- No worker start/stop/restart/skipWaiting, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
 - The execution route and permission boundary are recorded in [ADR 0002](docs/adr/0002-devtools-page-bridge.md). Safari 27.0 navigation under temporary access remains a known limitation.
 
 ## Evidence on Hand
 
-Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker management, manifest loading and messaging remain planned.
+Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker update/unregister controls are implemented with native acceptance pending. Manifest loading and messaging remain planned.
 
 - [Native Safari results and pending acceptance](docs/TESTING.md), versioned separately from automated checks.
 - [Approved visual baseline](.impeccable/review/cache.png), using synthetic data, with tokens and rules in [DESIGN.md](DESIGN.md).

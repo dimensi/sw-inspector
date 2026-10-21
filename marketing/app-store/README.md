@@ -1,10 +1,10 @@
 # SW Inspector — App Store assets
 
-Historical English assets for the macOS product page, prepared on 2026-10-19 before cache deletion was enabled. The existing PNGs and manifest describe that earlier build; regenerate and review the complete kit before using it for the cache-deletion release. The composition source now describes local inspection and explicit deletion. The approved Inspector design remains unchanged. Start with [the overview](overview.png).
+Historical English assets for the macOS product page, prepared on 2026-10-19 before cache deletion was enabled. The existing PNGs and manifest describe that earlier build; regenerate and review the complete kit before using it for the cache-deletion and worker-management release. The composition source now describes local inspection, explicit cache deletion and confirmed worker update/unregister; the historical screenshots do not prove the new controls. The approved Inspector design remains unchanged. Start with [the overview](overview.png).
 
 ## Historical screenshot set
 
-Do not upload this historical set for the current cache-deletion release. The five files in `screenshots/` were captured in numbered order. Each is **2880 × 1800**, **16:10**, **8-bit RGB PNG without an alpha channel**. These are the App Store upload files; `raw/` contains composition inputs with different dimensions.
+Do not upload this historical set for the current cache-deletion and worker-management release. The five files in `screenshots/` were captured in numbered order. Each is **2880 × 1800**, **16:10**, **8-bit RGB PNG without an alpha channel**. These are the App Store upload files; `raw/` contains composition inputs with different dimensions.
 
 | File | Story |
 | --- | --- |

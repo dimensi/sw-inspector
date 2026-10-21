@@ -18,6 +18,8 @@ Reports you choose to export remain in your chosen download location until you d
 
 You can explicitly delete a selected Cache Storage namespace or a fixed list of up to 100 namespaces after confirmation. Deleting one selected cache entry acts directly without a confirmation dialog. These actions affect the inspected website’s Cache Storage locally; they do not clear HTTP cache, cookies, IndexedDB, or localStorage. The website may recreate deleted data. If an action’s result is unknown, refresh to inspect the current state before taking another action.
 
+You can explicitly confirm an update check or unregister one selected Service Worker registration. An update check may make the browser download and install the website’s worker script; completion does not guarantee activation. Unregister does not necessarily stop control of existing pages and does not delete Cache Storage. These actions do not send inspection data to the developer.
+
 ## Reports and sharing
 
 Exporting creates a local JSON file containing diagnostic metadata, including the inspected origin, URLs, cache and Service Worker information, storage estimates, measurements, a timestamp, and the browser's user agent. Reports exclude cached response bodies, previews, and response headers.

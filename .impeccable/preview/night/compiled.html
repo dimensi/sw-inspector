@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div><script type="module">
+import { evaluateInspectedWindow } from './bridge.ts';
+await window.nightready;
+const session = new URL(location.href).searchParams.get('session');
+window.browser={runtime:{id:'night-qa',getURL:path=>location.origin+'/'+path,onMessage:{addListener(){},removeListener(){}},sendMessage:async message=>{
+if(message.kind==='sw-inspector/panel-activation')return {kind:message.kind,session,epoch:0};
+const [result,error]=await evaluateInspectedWindow(message.source);return {kind:'sw-inspector/evaluated',session,result,exception:error??null};
+}}};
+const html = await (await fetch('/production/panel.html')).text();
+const doc=new DOMParser().parseFromString(html,'text/html');
+for(const style of doc.querySelectorAll('link[rel=stylesheet]')){const link=document.createElement('link');link.rel='stylesheet';link.href='/production'+style.getAttribute('href');document.head.append(link);}
+const script=doc.querySelector("script[src^='/chunks/']").getAttribute('src');window.nightcompiledAsset=script;await import('/production'+script);
+</script></body></html>

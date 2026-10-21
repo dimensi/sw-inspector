@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** W1–W4 code-complete (2026-10-21); W5–W6 planned. Worker actions не подключены и недоступны пользователю. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1–W5 code-complete (2026-10-21); W6 acceptance pending. Worker update/unregister доступны через явное подтверждение; native Safari acceptance pending. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -133,22 +133,24 @@
 
 ### W5: Компактные controls и подтверждение выбранной цели
 
+**Files:** synthetic real-App harness `.impeccable/preview/night/` используется вместо расширения исторической fixture; source/runtime evidence остаётся synthetic, deeper browser navigation races и native acceptance pending.
+
 **Files:** создать `entrypoints/panel/WorkerActions.svelte`; изменить `entrypoints/panel/App.svelte`, `.impeccable/preview/fixture.js`; потреблять `src/ui/action-controller.ts` и `ActionConfirmation.svelte` из 00.
 
 **Interfaces:** props WorkerActions: `{registrations: Registration[]; disabled: boolean; onintent: (intent: ActionIntent) => void}`. Компонент владеет только выбранным ID; App владеет controller и общим confirmation.
 `createActionController({invoke, getPage, onState, onSettled})` из `src/ui/action-controller.ts` возвращает `{prepare, confirm, cancel, reset}` по 00; `onState` записывает ActionState в Svelte `$state` App, обычный объект controller не считается реактивным.
 `ActionConfirmation` получает `{ticket, busy, onconfirm, oncancel}`. App callback `reloadOverviewAfterWorkerAction(receipt: ActionReceipt | null): Promise<void>` читает свежий overview также при null/unknown, только если документ операции всё ещё текущий; receipt/error действия сохраняется отдельно.
 
-- [ ] В fixture подготовить два scope с одинаковым scriptURL, пустой список, 101 registration, pending, failed, absent и outcome-unknown сценарии; добавить счётчики prepare/commit/update/unregister.
-- [ ] До UI проверить сценарий: выбрать второй scope, `Check for update` → confirmation содержит второй scope; Cancel оставляет commit count=0; Confirm приводит к update count=1.
-- [ ] Реализовать в WorkerActions native select `aria-label="Registration"` со scope в options и пустой опцией `Select registration`; после смены массива registrations сбрасывать выбранный ID, не сопоставлять новую цель по scope.
-- [ ] Встроить WorkerActions в worker pane toolbar: `Check for update` и `Unregister`; disabled без выбранного registrationId или при props.disabled; отсутствие handles при overlimit объяснить `Management unavailable for this snapshot.`. Existing property sections оставить.
-- [ ] Использовать только общий ActionConfirmation; управление pending/confirm/cancel через публичный controller 00. Не писать второй modal, `window.confirm` или прямой transport commit в дочернем компоненте.
-- [ ] Receipt показывать в worker pane; `outcome-unknown` → `The action may have completed. Refresh to inspect the current state.`; refresh failure не заменяет подтверждённый receipt новым ложным failure действия.
-- [ ] Через onSettled вызвать `reloadOverviewAfterWorkerAction` один раз: receipt или null/unknown перечитывает overview только в том же документе, обновляет массив registrations и сохраняет исходный receipt/unknown error. Это только чтение, никогда новый prepare/commit; при смене документа перечитывание старой операции пропускается. Ошибка чтения локальная, старые handles UI отключены до успешного Refresh.
-- [ ] При navigation/manual Refresh вызвать controller.reset и reset выбора; post-action reread не вызывает reset результата. generation guards не публикуют старый receipt в новый документ. Не стирать unrelated cache/preview ошибки через worker receipt.
-- [ ] Проверить fixture обеих тем при 1440×900 и 390×844: длинные scope/scriptURL, zero/overlimit/error, Tab/Space, Cancel/Escape и focus return; записать actual результаты, не ограничиваться source-string тестом.
-- [ ] Прогнать официальные Svelte diagnostics/autofixer для обоих изменённых компонентов и затем `rtk pnpm check`; ожидаются ноль ошибок.
+- [x] В fixture подготовить два scope с одинаковым scriptURL, пустой список, 101 registration, pending, failed, absent и outcome-unknown сценарии; добавить счётчики prepare/commit/update/unregister.
+- [x] До UI проверить сценарий: выбрать второй scope, `Check for update` → confirmation содержит второй scope; Cancel оставляет commit count=0; Confirm приводит к update count=1.
+- [x] Реализовать в WorkerActions native select `aria-label="Registration"` со scope в options и пустой опцией `Select registration`; после смены массива registrations сбрасывать выбранный ID, не сопоставлять новую цель по scope.
+- [x] Встроить WorkerActions в worker pane toolbar: `Check for update` и `Unregister`; disabled без выбранного registrationId или при props.disabled; отсутствие handles при overlimit объяснить `Management unavailable for this snapshot.`. Existing property sections оставить.
+- [x] Использовать только общий ActionConfirmation; управление pending/confirm/cancel через публичный controller 00. Не писать второй modal, `window.confirm` или прямой transport commit в дочернем компоненте.
+- [x] Receipt показывать в worker pane; `outcome-unknown` → `The action may have completed. Refresh to inspect the current state.`; refresh failure не заменяет подтверждённый receipt новым ложным failure действия.
+- [x] Через onSettled вызвать `reloadOverviewAfterWorkerAction` один раз: receipt или null/unknown перечитывает overview только в том же документе, обновляет массив registrations и сохраняет исходный receipt/unknown error. Это только чтение, никогда новый prepare/commit; при смене документа перечитывание старой операции пропускается. Ошибка чтения локальная, старые handles UI отключены до успешного Refresh.
+- [x] При navigation/manual Refresh вызвать controller.reset и reset выбора; post-action reread не вызывает reset результата. generation guards не публикуют старый receipt в новый документ. Не стирать unrelated cache/preview ошибки через worker receipt.
+- [x] Проверить fixture обеих тем при 1440×900 и 390×844: длинные scope/scriptURL, zero/overlimit/error, Tab/Space, Cancel/Escape и focus return; записать actual результаты, не ограничиваться source-string тестом.
+- [x] Прогнать официальные Svelte diagnostics/autofixer для обоих изменённых компонентов и затем `rtk pnpm check`; ожидаются ноль ошибок.
 
 ### W6: Актуальная policy, итоговая проверка и native Safari acceptance
 
