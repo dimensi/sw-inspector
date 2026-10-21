@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Planned / not implemented. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1 code-complete (2026-10-21); M2–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -86,15 +86,15 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 **Files:** создать `src/manifest/types.ts`, `src/manifest/page-runner.ts`, `tests/manifest/discovery.test.ts`; расширить `src/domain/commands.ts`.
 **Interfaces:** `createManifestRunner(context: PageContext): (command: ManifestCommand) => Promise<Result<ManifestDiscovery | ManifestFetch>>`.
 
-- [ ] Добавить failing tests `absent`, `first-link-only`, `base-url`, `stale-page`: соответственно `snapshotId === null`, выбран первый элемент, URL учитывает `<base>`, `error.code === 'stale-result'`; во всех случаях `fetch.mock.calls.length === 0`.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/manifest/discovery.test.ts`; ожидается FAIL из-за отсутствующей factory/ветки команд.
-- [ ] Реализовать discovery первого `link[rel~="manifest" i]` основного документа, считать `linkCount`; iframe не обходить. Сохранять raw `getAttribute('href')` и разрешённый DOM `href`; missing/empty не превращать в URL документа.
-- [ ] Тест `rel-token-case` использует `rel="alternate MANIFEST"`: link выбирается, а `rel="notmanifest"` не выбирается. Ключевые слова rel сравниваются ASCII case-insensitively; CSS `~=` сохраняет границы токена.
-- [ ] HTTP(S) без username/password разрешены для чтения. `data:`, `blob:`, `file:`, другие схемы и URL credentials → `unsupported-url`, без утверждения «manifest invalid».
-- [ ] Внутри factory определить `RetainedManifestSnapshot = { page: PageIdentity; element: HTMLLinkElement; link: ManifestLink; expiresAt: number }`.
-- [ ] Под ключом `manifest:runtime:v1` в `context.manifests` хранить `ManifestRuntime = { snapshots: Map<string, RetainedManifestSnapshot>; controllers: Set<AbortController> }`. Создавать один раз; один `onDispose` abort-ит controllers и очищает snapshots.
-- [ ] Перед каждым действием удалить просроченные snapshots; новый random UUID вытесняет самый старый при размере 8. Проверить fake timers: 60000 ms истекли → `stale-snapshot`; девятый snapshot вытесняет первый.
-- [ ] Запустить тот же тест; ожидается PASS. Review gate: discovery не имеет обходного fetch, URL input отсутствует, Map принадлежит только manifest runner.
+- [x] Добавить failing tests `absent`, `first-link-only`, `base-url`, `stale-page`: соответственно `snapshotId === null`, выбран первый элемент, URL учитывает `<base>`, `error.code === 'stale-result'`; во всех случаях `fetch.mock.calls.length === 0`.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/manifest/discovery.test.ts`; ожидается FAIL из-за отсутствующей factory/ветки команд.
+- [x] Реализовать discovery первого `link[rel~="manifest" i]` основного документа, считать `linkCount`; iframe не обходить. Сохранять raw `getAttribute('href')` и разрешённый DOM `href`; missing/empty не превращать в URL документа.
+- [x] Тест `rel-token-case` использует `rel="alternate MANIFEST"`: link выбирается, а `rel="notmanifest"` не выбирается. Ключевые слова rel сравниваются ASCII case-insensitively; CSS `~=` сохраняет границы токена.
+- [x] HTTP(S) без username/password разрешены для чтения. `data:`, `blob:`, `file:`, другие схемы и URL credentials → `unsupported-url`, без утверждения «manifest invalid».
+- [x] Внутри factory определить `RetainedManifestSnapshot = { page: PageIdentity; element: HTMLLinkElement; link: ManifestLink; expiresAt: number }`.
+- [x] Под ключом `manifest:runtime:v1` в `context.manifests` хранить `ManifestRuntime = { snapshots: Map<string, RetainedManifestSnapshot>; controllers: Set<AbortController> }`. Создавать один раз; один `onDispose` abort-ит controllers и очищает snapshots.
+- [x] Перед каждым действием удалить просроченные snapshots; новый random UUID вытесняет самый старый при размере 8. Проверить fake timers: 60000 ms истекли → `stale-snapshot`; девятый snapshot вытесняет первый.
+- [x] Запустить тот же тест; ожидается PASS. Review gate: discovery не имеет обходного fetch, URL input отсутствует, Map принадлежит только manifest runner.
 
 ### M2: Явный ограниченный fetch
 
