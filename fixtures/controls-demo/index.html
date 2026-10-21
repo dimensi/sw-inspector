@@ -2,7 +2,8 @@
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SW Inspector disposable controls fixture</title>
 <h1>Disposable inspection fixture</h1>
 <p>Use only on a disposable localhost origin. All fixture cache names begin with <code>sw-inspector-fixture-</code>. Nothing runs automatically.</p>
-<button id="seed">Seed fixture</button> <button id="inspect">Inspect fixture caches</button> <button id="cleanup">Cleanup fixture</button>
+<button id="seed">Seed fixture</button> <button id="seed-preview">Seed preview fixture</button> <button id="inspect">Inspect fixture caches</button> <button id="cleanup">Cleanup fixture</button>
+<p><strong>Seed preview fixture</strong> separately creates <code>sw-inspector-fixture-preview</code> with a small JSON response and a 64 KiB text response. The original Seed fixture still creates only alpha, beta and entries. Cleanup fixture removes both sets.</p>
 <p>Native fault injection only: <button id="delay">Delay next fixture deletion result</button> <button id="restore" disabled>Restore normal deletion</button></p>
 <p id="delay-status" role="status">Normal deletion. The optional helper delays one successful fixture namespace deletion result by 10 seconds, after the deletion has happened. Reload restores normal behavior.</p>
 <pre id="result" role="status"></pre>
@@ -122,6 +123,13 @@ async function inspect() {
 }
 function action(id, run) { document.querySelector(id).onclick = async () => { try { await run(); await inspect(); } catch (error) { result.textContent = String(error); } }; }
 action('#seed', async () => { for (const name of ['alpha', 'beta']) { const cache = await caches.open(prefix + name); await cache.put(new Request(location.origin + '/fixture-' + name), new Response('Fixture ' + name, { headers: { 'Content-Type': 'text/plain' } })); } const cache = await caches.open(prefix + 'entries'); for (const language of ['en', 'fr']) await cache.put(new Request(location.origin + '/fixture-vary', { headers: { 'Accept-Language': language } }), new Response(language, { headers: { Vary: 'Accept-Language', 'Content-Type': 'text/plain' } })); for (const version of [1, 2]) await cache.put(new Request(location.origin + '/fixture-query?v=' + version), new Response('Version ' + version, { headers: { 'Content-Type': 'text/plain' } })); });
+action('#seed-preview', async () => {
+  const cache = await caches.open(prefix + 'preview');
+  await cache.put(new Request(location.origin + '/fixture-preview.json'), new Response(JSON.stringify({ fixture: 'preview', message: 'Explicit JSON cache preview', values: [1, true, null] }), { headers: { 'Content-Type': 'application/json' } }));
+  const ending = '\nEND OF PREVIEW FIXTURE\n';
+  const text = 'Preview fixture text.\n'.repeat(4096).slice(0, 65536 - ending.length) + ending;
+  await cache.put(new Request(location.origin + '/fixture-long-text.txt'), new Response(text, { headers: { 'Content-Type': 'text/plain' } }));
+});
 action('#inspect', async () => {});
 action('#cleanup', async () => { for (const name of await caches.keys()) if (name.startsWith(prefix)) await caches.delete(name); });
 </script></html>
