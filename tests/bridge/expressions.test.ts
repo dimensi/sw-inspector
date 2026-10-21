@@ -202,7 +202,32 @@ it('serializes explicit message formatter/session runtime in fresh realm without
   expect(add).toHaveBeenCalledTimes(2);
   sw.dispatchEvent(new MessageEvent('message', { data: { html: '</script><img src=x>' } }));
   expect(await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 })).toMatchObject({ ok: true, value: { nextSeq: 1, records: [{ text: '{"html":"</script><img src=x>"}', requestId: null }] } });
-  expect(await run({ type: 'prepare-action', expectedPage: page, intent: { kind: 'send-worker-message', sessionId, registrationId: 'none', workerId: 'none', slot: 'active', jsonText: '{}', reply: 'none' } })).toMatchObject({ ok: false, error: { code: 'unsupported' } });
+  expect(await run({ type: 'prepare-action', expectedPage: page, intent: { kind: 'send-worker-message', sessionId, registrationId: 'none', workerId: 'none', slot: 'active', jsonText: '{}', reply: 'none' } })).toMatchObject({ ok: false, error: { code: 'stale-target' } });
   expect(await run({ type: 'stop-message-session', expectedPage: page, sessionId })).toEqual({ ok: true, value: { stopped: true } });
   expect(remove).toHaveBeenCalledTimes(2);
+});
+
+it('serializes message action and formatter with raw hostile JSON and exactly one post', async () => {
+  const events = new EventTarget(); const postMessage = vi.fn();
+  const worker = { scriptURL: 'https://messages.test/sw.js', state: 'activated', postMessage };
+  const registration = { scope: 'https://messages.test/', active: worker, waiting: null, installing: null };
+  const realm = { crypto, TextEncoder, navigator: { serviceWorker: { getRegistrations: async () => [registration], controller: null }, storage: { estimate: async () => ({}) } },
+    caches: { keys: async () => [] }, location: { origin: 'https://messages.test', href: 'https://messages.test/' },
+    setTimeout: () => 0, clearTimeout: () => {}, addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events) };
+  let seq = 0;
+  async function run(command: InspectorCommand) {
+    const id = `send-${++seq}`; runInNewContext(createJobStartExpression(command, id), realm);
+    await new Promise(resolve => setImmediate(resolve));
+    const reply = JSON.parse(runInNewContext(createJobPollExpression(id), realm)); expect(reply.state).toBe('complete'); return reply.result;
+  }
+  const overview = (await run({ type: 'overview' })).value; const page = overview.page;
+  const selected = overview.registrations[0];
+  const sessionId = (await run({ type: 'open-message-session', expectedPage: page })).value.sessionId;
+  const payload = '</script>\u2028<img src=x>'; const prepared = await run({ type: 'prepare-action', expectedPage: page,
+    intent: { kind: 'send-worker-message', sessionId, registrationId: selected.registrationId, workerId: selected.active.workerId, slot: 'active', jsonText: JSON.stringify(payload), reply: 'none' } });
+  expect(postMessage).not.toHaveBeenCalled(); expect(prepared.ok).toBe(true);
+  const commit = { type: 'commit-action' as const, expectedPage: page, ticketId: prepared.value.ticketId };
+  expect(await run(commit)).toMatchObject({ ok: true, value: { items: [{ outcome: 'applied' }] } }); await run(commit);
+  expect(postMessage.mock.calls).toEqual([[payload]]);
+  expect(await run({ type: 'read-message-events', expectedPage: page, sessionId, afterSeq: 0 })).toMatchObject({ ok: true, value: { records: [{ direction: 'outgoing', text: JSON.stringify(payload), status: 'posted' }] } });
 });

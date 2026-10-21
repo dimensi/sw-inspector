@@ -6,7 +6,7 @@
 **Architecture:** Общий action controller для отправки; отдельная opt-in message session, bounded buffer и leased page listeners. Всё через текущий relay и start/poll, без перехвата browser protocol.
 **Tech Stack:** TypeScript/Svelte 5, ServiceWorker.postMessage, MessageChannel, ServiceWorkerContainer events, Vitest.
 **Spec:** [development design](2026-10-19-development-design.md), [00](2026-10-19-00-action-foundation.md), [02/W1 worker handles](2026-10-19-02-worker-management.md).
-**Status:** S1 code-complete (2026-10-21); S2–S4 planned. No Messages UI, send remains unsupported. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
+**Status:** S1–S2 code-complete (2026-10-21); S3–S4 planned. No Messages UI; reply=none uses confirmed action tickets, port replies remain unsupported. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
 
 ## Global Constraints
 
@@ -74,10 +74,12 @@ Open session не ставит listeners и не посылает сообщен
 **Files:** create `src/messages/page-actions.ts`, `tests/messages/send.test.ts`; modify action handler wiring.
 **Interfaces:** intent из общего design: sessionId/registrationId/workerId/slot/jsonText/reply. Prepare валидирует JSON/bytes/session/page, ищет retained registration/slot из W1 и фиксирует worker ref + JSON value + новый requestId. Summary включает origin, scope, slot, scriptURL, JSON text, reply mode и **“This sends data to website code and may change website state.”**
 
-- [ ] Тесты активного и waiting target; missing/redundant/replaced worker с тем же URL; registration TTL; изменившийся slot до commit; expired message session; invalid/oversize JSON. Для всех отказов postMessage count=0.
-- [ ] Тест `post_once_without_application_ack`: для reply=none один postMessage(value), исходный JSON не оборачивается нашим envelope; no throw → item applied с сообщением **“Message posted. Delivery is not confirmed.”** + outgoing row posted. Отсутствие ответов не превращается в synthetic success.
-- [ ] `rtk proxy pnpm exec vitest run tests/messages/send.test.ts`: получить FAIL, реализовать self-contained factory и живую проверку target перед effect, повторить до PASS. PostMessage exception → failed с безопасным text; транспортная неопределённость обрабатывается 00, повторять payload запрещено.
-- [ ] Send confirmation всегда через общий controller. После send onSettled читает message batch; НЕ вызывает полный overview Refresh, который инвалидировал бы worker handles/session.
+- [x] Тесты активного и waiting target; missing/redundant/replaced worker с тем же URL; registration TTL; изменившийся slot до commit; expired message session; invalid/oversize JSON. Для всех отказов postMessage count=0.
+- [x] Тест `post_once_without_application_ack`: для reply=none один postMessage(value), исходный JSON не оборачивается нашим envelope; no throw → item applied с сообщением **“Message posted. Delivery is not confirmed.”** + outgoing row posted. Отсутствие ответов не превращается в synthetic success.
+- [x] `rtk proxy pnpm exec vitest run tests/messages/send.test.ts`: получить FAIL, реализовать self-contained factory и живую проверку target перед effect, повторить до PASS. PostMessage exception → failed с безопасным text; транспортная неопределённость обрабатывается 00, повторять payload запрещено.
+- [x] Send confirmation всегда через общий controller. Page-side send подключён к общему prepare/commit controller. UI onSettled batch read относится к S4; S2 не добавляет UI или overview Refresh, который инвалидировал бы worker handles/session.
+
+**S2 scope note:** exact retained active/waiting ref/ID/slot, page/session/TTL and current registration membership проверяются до/после awaited lookup в prepare и commit. Raw parsed JSON отправляется один раз, без envelope; lost/malformed/missing/timeout commit response остаётся outcome-unknown без retry. Send UI/policy activation и settlement batch read отложены до S4; reply port — S3.
 
 ## S3 — Ответ по MessageChannel
 

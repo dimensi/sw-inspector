@@ -251,4 +251,44 @@ assert.equal(messagesRead.value.listening, true);
 assert.equal((await run({type:'stop-message-session',expectedPage:page,sessionId:messageSessionId})).value.stopped, true);
 assert.equal(ownedWorkerListeners.size, 0);
 assert.equal((await run({type:'read-message-events',expectedPage:page,sessionId:messageSessionId,afterSeq:0})).error.code, 'stale-target');
-console.log(`PASS ${filename}: compiled start/poll, C/W/M retained contracts, S1 opt-in message session/listener/preview/read/stop, no duplicate listener and stopped-session rejection`);
+// S2 retains exact active/waiting workers and posts the unwrapped JSON value once.
+const postedMessages = [];
+secondRegistration.active.postMessage = (...args) => { postedMessages.push({slot:'active',args}); };
+secondRegistration.waiting = {scriptURL:hostileWorkerURL,state:'installed',postMessage(...args){postedMessages.push({slot:'waiting',args});}};
+const sendSession = await run({type:'open-message-session',expectedPage:page});
+assert.equal(sendSession.ok, true);
+assert.equal(ownedWorkerListeners.size, 0);
+for (const [index,slot] of ['active','waiting'].entries()) {
+  const overviewForSend = await run({type:'overview'});
+  const targetForSend = overviewForSend.value.registrations[1];
+  const payload = slot === 'active' ? 'raw </script>\u2028\u2029' : null;
+  const sendIntent = {kind:'send-worker-message',sessionId:sendSession.value.sessionId,
+    registrationId:targetForSend.registrationId,workerId:targetForSend[slot].workerId,slot,jsonText:JSON.stringify(payload),reply:'none'};
+  const sendTicket = await run({type:'prepare-action',expectedPage:page,intent:sendIntent});
+  assert.equal(sendTicket.ok, true);
+  assert.equal(postedMessages.length,index,'Prepare posts nothing');
+  assert.ok(sendTicket.value.summary.includes('This sends data to website code and may change website state.'));
+  const sendCommit = {type:'commit-action',expectedPage:page,ticketId:sendTicket.value.ticketId};
+  const sendReceipt = await run(sendCommit);
+  assert.equal(sendReceipt.ok,true);
+  assert.equal(sendReceipt.value.items[0].message,'Message posted. Delivery is not confirmed.');
+  assert.deepEqual(await run(sendCommit),sendReceipt);
+  assert.equal(postedMessages.length,index+1);
+  assert.equal(postedMessages[index].slot,slot);
+  assert.equal(postedMessages[index].args.length,1,'No wrapper envelope or port for reply none');
+  assert.equal(postedMessages[index].args[0],payload);
+}
+const postedRows = await run({type:'read-message-events',expectedPage:page,sessionId:sendSession.value.sessionId,afterSeq:0});
+assert.equal(postedRows.value.records.length,2);
+assert.ok(postedRows.value.records.every(row=>row.direction==='outgoing'&&row.status==='posted'));
+const staleSendOverview = (await run({type:'overview'})).value.registrations[1];
+const staleSendTicket = await run({type:'prepare-action',expectedPage:page,intent:{kind:'send-worker-message',
+  sessionId:sendSession.value.sessionId,registrationId:staleSendOverview.registrationId,
+  workerId:staleSendOverview.active.workerId,slot:'active',jsonText:'{}',reply:'none'}});
+assert.equal(staleSendTicket.ok,true);
+secondRegistration.active = {...secondRegistration.active};
+const staleSendResult = await run({type:'commit-action',expectedPage:page,ticketId:staleSendTicket.value.ticketId});
+assert.equal(staleSendResult.error.code,'stale-target');
+assert.equal(postedMessages.length,2,'Same-URL replaced worker is never posted');
+assert.equal((await run({type:'stop-message-session',expectedPage:page,sessionId:sendSession.value.sessionId})).value.stopped,true);
+console.log(`PASS ${filename}: compiled C/W/M/S1 contracts, S2 exact active/waiting raw JSON posting and outgoing rows, duplicate commit once and replaced-worker zero-effect rejection`);

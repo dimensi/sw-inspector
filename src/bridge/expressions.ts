@@ -1,3 +1,4 @@
+import { createMessageActions } from '../messages/page-actions';
 import { createMessageRunner } from '../messages/page-runner';
 import { formatMessagePreview } from '../messages/preview';
 import { createManifestRunner } from '../manifest/page-runner';
@@ -34,6 +35,7 @@ export function createJobStartExpression(command: InspectorCommand, jobId: strin
       const handlers = {
         ...(${createCacheActions.toString()})(context, ${serialize(snapshotRegistryKey)}),
         ...(${createWorkerActions.toString()})(context),
+        ...(${createMessageActions.toString()})(context, (${formatMessagePreview.toString()})),
       };
       if (command.type === 'open-message-session' || command.type === 'start-message-listener'
         || command.type === 'read-message-events' || command.type === 'stop-message-session') {
