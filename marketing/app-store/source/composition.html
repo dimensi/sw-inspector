@@ -72,7 +72,7 @@ if (mode === 'store') {
   const shot = shots[Number(params.get('shot') || 0)];
   root.innerHTML = `<article class="canvas ${shot.theme}"><header><h1>${shot.title}</h1><p>${shot.subtitle}</p></header>${brand}<div class="panel"><img src="/pack/raw/${shot.file}.png" alt="SW Inspector interface"></div>${footer}</article>`;
 } else if (mode === 'workspace') {
-  root.innerHTML = `<article class="canvas mockup"><header><h1>Service Workers and Cache Storage.</h1><p>Inspect workers and caches; explicitly confirm worker actions or delete cache data.</p></header>${brand}${windowMarkup('back', '01-service-workers', 'SW Inspector · Service Workers')}${windowMarkup('front night', '03-response-preview', 'SW Inspector · Cache Storage')}${footer}</article>`;
+  root.innerHTML = `<article class="canvas mockup"><header><h1>Service Workers and Cache Storage.</h1><p>Inspect workers, caches and declared manifests with explicit controls.</p></header>${brand}${windowMarkup('back', '01-service-workers', 'SW Inspector · Service Workers')}${windowMarkup('front night', '03-response-preview', 'SW Inspector · Cache Storage')}${footer}</article>`;
 } else if (mode === 'themes') {
   root.innerHTML = `<article class="canvas mockup comparison"><header><h1>At home in your Inspector.</h1><p>Compact tables. Focused details. Light and dark appearance.</p></header>${brand}${windowMarkup('first', '06-compact-light', 'Light appearance')}${windowMarkup('second night', '07-compact-dark', 'Dark appearance')}${footer}</article>`;
 } else if (mode === 'contact') {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
+  import ManifestPane from './ManifestPane.svelte';
   import WorkerActions from './WorkerActions.svelte';
   import type { ActionIntent, ActionReceipt } from '../../src/domain/actions';
   import ActionConfirmation from './ActionConfirmation.svelte';
@@ -22,8 +23,9 @@
       return exception || typeof value !== 'string' ? 'unknown-origin' : value;
     },
   });
-  type View = 'workers' | 'caches' | 'cache' | 'offline' | 'diagnostics';
+  type View = 'workers' | 'caches' | 'cache' | 'offline' | 'manifest' | 'diagnostics';
   let view = $state<View>('workers');
+  let manifestRefreshToken = $state(0);
   let cachesOpen = $state(true);
   let requestedCache = $state('');
   let lastUpdated = $state<string | null>(null);
@@ -265,6 +267,7 @@
   }
 
   async function refresh(expectedPage?: PageIdentity) {
+    manifestRefreshToken += 1;
     if (!expectedPage) resetActions();
     navigationGeneration += 1;
     transport.invalidate();
@@ -471,7 +474,7 @@
   <div class="compact-navigation">
     <label for="section-select">View</label>
     <select id="section-select" value={view === 'cache' ? 'caches' : view} onchange={(event) => { chooseView(event.currentTarget.value as View); }}>
-      <option value="workers">Service Workers</option><option value="caches">Cache Storage</option><option value="offline">Offline Resources</option><option value="diagnostics">Diagnostics</option>
+      <option value="workers">Service Workers</option><option value="caches">Cache Storage</option><option value="offline">Offline Resources</option><option value="manifest">Manifest</option><option value="diagnostics">Diagnostics</option>
     </select>
     {#if view === 'cache' || view === 'caches'}
       <select aria-label="Cache namespace" value={view === 'cache' ? requestedCache : ''} onchange={(event) => { const name = event.currentTarget.value; if (name) void chooseCache(name); else chooseView('caches'); }}>
@@ -494,6 +497,7 @@
           {:else}<span class="tree-empty">{overview ? 'No caches' : 'Not inspected'}</span>{/each}
         {/if}
         <button class="navigation-row" class:current={view === 'offline'} aria-current={view === 'offline' ? 'page' : undefined} onclick={() => { chooseView('offline'); }}><Icon name="check" /><span>Offline Resources</span></button>
+        <button class="navigation-row" class:current={view === 'manifest'} aria-current={view === 'manifest' ? 'page' : undefined} onclick={() => { chooseView('manifest'); }}><Icon name="file" /><span>Manifest</span></button>
       </div>
       <button class="navigation-row diagnostic-navigation" class:current={view === 'diagnostics'} aria-current={view === 'diagnostics' ? 'page' : undefined} onclick={() => { chooseView('diagnostics'); }}><Icon name="diagnostics" /><span>Diagnostics</span></button>
     </nav>
@@ -557,6 +561,9 @@
             {#each overview.warnings as warning, index (index)}<div class="notice warning"><Icon name="warning" /><span>{warning}</span></div>{/each}
           {/if}
         </div>
+
+      {:else if view === 'manifest'}
+        <ManifestPane page={overview?.page ?? null} refreshToken={manifestRefreshToken} invoke={transport.invoke} />
 
       {:else if view === 'caches'}
         <div class="pane-toolbar cache-toolbar"><h1>Cache Storage</h1><span class="secondary">{overview?.caches.length ?? '—'} namespaces</span><span class="toolbar-space"></span><button onclick={(event) => { actionTrigger = event.currentTarget; void actions.prepare({ kind: 'delete-all-caches' }); }} disabled={!overview?.page || !overview.caches.length || loading || !!working || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'}>Delete all caches…</button></div>

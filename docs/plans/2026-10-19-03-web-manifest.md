@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** M1–M4 code-complete (2026-10-21); M5–M6 planned. Runner сериализован через relay; пользовательский Manifest UI пока недоступен. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1–M5 code-complete (2026-10-21); M6 acceptance pending. Manifest UI доступен; scoped Load manifest exception активирован вместе с M5, native Safari acceptance pending. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -147,16 +147,18 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 **Files:** создать `entrypoints/panel/ManifestPane.svelte`; минимально изменить `entrypoints/panel/App.svelte`, `.impeccable/preview/fixture.js`.
 **Interfaces:** props `{ page: PageIdentity | null; refreshToken: number; invoke: <T>(command: InspectorCommand, options?: { signal?: AbortSignal }) => Promise<Result<T>> }`; callback принадлежит foundation transport.
 
-- [ ] Перед компонентом использовать текущие Svelte docs через ctx7 (library → docs, вне sandbox) и официальный Svelte MCP; не создавать новый дизайн или dependency.
-- [ ] Добавить fixture variants `manifest=absent|valid|invalid-json|network-error|too-large|long|race` и счётчик manifest fetch; начальное mount/destination/Refresh должны оставлять счётчик 0.
-- [ ] Pane содержит `discovery`, `source`, `analysis`, `localError`, `busy`, operation generation и AbortController. При изменении page/refreshToken или unmount сбросить всё, abort ожидание, инвалидировать generation.
-- [ ] Без page показать `Refresh to inspect this page.`; действия `Discover manifest`, `Load manifest`, `Show source`. Discovery вызывается только явной кнопкой; Load включён для актуальной поддерживаемой ссылки.
-- [ ] Source/analysis создаются только по successful loaded response. Вызов: `parseManifest({ documentURL: result.value.page.url, manifestURL: result.value.finalURL, contentType: result.value.contentType, text: result.value.text })`. Show source раскрывает `<pre>` без повторного запроса; failed reload очищает предыдущий source.
-- [ ] Property rows показывают source URL, final URL при redirect, status/MIME и declared/resolved values; icons — dense table с index identity, без img/background-image. Notice: `Loaded by SW Inspector. Safari may process this manifest differently.`
-- [ ] App добавляет `Manifest` в sidebar и compact select, монтирует Pane с props; никакие manifest errors не попадают в `inspectionError`. Сохранить токены DESIGN, focus и локальный scrolling.
-- [ ] Проверить fixture: delayed response предыдущей операции не заменяет новую; duplicate icon URLs отображаются; markup/source не выполняется; loading/absent/error/too-large имеют разные сообщения.
-- [ ] Выполнить Svelte MCP validation после исправлений; `rtk proxy pnpm check` → без ошибок; затем `rtk proxy pnpm build:safari` и `rtk proxy python3 .impeccable/preview/server.py`.
-- [ ] В браузере проверить wide 1440×900 и narrow 390×844 в light/dark, keyboard tab/focus, длинные значения и source scroll. После проверки остановить fixture server; результаты обозначить synthetic.
+- [x] Перед компонентом использовать текущие Svelte docs через ctx7 (library → docs, вне sandbox) и официальный Svelte MCP; не создавать новый дизайн или dependency.
+- [x] Добавить fixture variants `manifest=absent|valid|invalid-json|network-error|too-large|long|race` и счётчик manifest fetch; начальное mount/destination/Refresh должны оставлять счётчик 0.
+- [x] Pane содержит `discovery`, `source`, `analysis`, `localError`, `busy`, operation generation и AbortController. При изменении page/refreshToken или unmount сбросить всё, abort ожидание, инвалидировать generation.
+- [x] Без page показать `Refresh to inspect this page.`; действия `Discover manifest`, `Load manifest`, `Show source`. Discovery вызывается только явной кнопкой; Load включён для актуальной поддерживаемой ссылки.
+- [x] Source/analysis создаются только по successful loaded response. Вызов: `parseManifest({ documentURL: result.value.page.url, manifestURL: result.value.finalURL, contentType: result.value.contentType, text: result.value.text })`. Show source раскрывает `<pre>` без повторного запроса; failed reload очищает предыдущий source.
+- [x] Property rows показывают source URL, final URL при redirect, status/MIME и declared/resolved values; icons — dense table с index identity, без img/background-image. Notice: `Loaded by SW Inspector. Safari may process this manifest differently.`
+- [x] App добавляет `Manifest` в sidebar и compact select, монтирует Pane с props; никакие manifest errors не попадают в `inspectionError`. Сохранить токены DESIGN, focus и локальный scrolling.
+- [x] Проверить fixture: delayed response предыдущей операции не заменяет новую; duplicate icon URLs отображаются; markup/source не выполняется; loading/absent/error/too-large имеют разные сообщения.
+- [x] Выполнить Svelte MCP validation после исправлений; `rtk proxy pnpm check` → без ошибок; затем `rtk proxy pnpm build:safari`; существующий single-browser real-App harness `.impeccable/preview/night/` заменяет исторический preview server.
+- [x] В браузере проверить wide 1440×900 и narrow 390×844 в light/dark, keyboard tab/focus, длинные значения и source scroll. QA сохраняет один browser/harness для следующих задач; результаты обозначить synthetic.
+
+**M5 implementation notes:** Load manifest policy активирован при фактическом включении UI (не отложен до M6); worker/cache exceptions сохранены. По согласованному уточнению parser сохраняет absent declaration как `undefined`, explicit JSON null как `null` для честных panel-only labels; regression test добавлен, wire contract не менялся. Bounded browser matrix passed; Refresh-during-load browser case остаётся unrun/pending отдельно от unit guards. Named source region имеет документированное исключение Svelte tabindex warning для keyboard scrolling в Safari; official diagnostics и check без ошибок/предупреждений. Native Safari acceptance остаётся pending.
 
 ### M6: Native Safari acceptance и самостоятельная активация Manifest
 

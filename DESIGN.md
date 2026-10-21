@@ -1,6 +1,6 @@
 ---
 name: SW Inspector
-description: Compact inspection workspace with explicit worker update/unregister and cache deletion for Safari Web Inspector
+description: Compact Safari inspection workspace with explicit worker/cache actions and declared Web App Manifest inspection
 colors:
   background: "#fff"
   chrome: "#f2f2f2"
@@ -253,6 +253,10 @@ A muted label column aligns against a primary-value column. Technical strings wr
 ### Notices and empty states
 
 Warnings and errors are full-width local strips with semantic color and plain text. Blank panes explain the next action in ordinary body copy. Partial inventory and measurement states remain explicit. The status bar reports the inspection state and the manual-refresh limitation without becoming a hero surface. For the recognized Safari tab-access denial, lead with **Allow access to this tab** and the toolbar/Refresh instruction; retain the original error under **Technical details**. Evaluation API, relay and other ambiguous failures keep their actual error and do not imply a permission diagnosis.
+
+### Manifest inspection
+
+The Manifest destination reuses the neutral toolbar, property rows, dense tables and local notices. Discover manifest, Load manifest and Show source are explicit separate controls; no request runs on mount, destination change, Refresh, discovery or source expansion. Label declarations and Inspector URL reconstructions separately, retain the Safari-processing disclaimer, and render source as escaped text in a named keyboard-scrollable region. Icon rows are metadata only, never images. Keep manifest errors inside its pane and reset/abort local operations on page/Refresh/unmount. No new tokens are introduced.
 
 ### Worker actions
 

@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state and Cache Storage. Explicit actions check for worker updates, unregister a selected registration, or delete selected cache entries and confirmed selected/listed namespaces.
+Developers inspecting a web origin in Safari Web Inspector on macOS. They need to understand Service Worker control, lifecycle state and Cache Storage and inspect a declared Web App Manifest. Explicit actions check for worker updates, unregister a selected registration, or delete selected cache entries and confirmed selected/listed namespaces.
 
 ## Product Purpose
 
@@ -29,12 +29,13 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 - Explicit **Delete all caches…** prepares the full fixed list of at most 100 namespace names with origin and count. **Delete listed caches** deletes that list sequentially; newly created names are excluded. Per-name applied, absent, failed and skipped outcomes remain distinct. More than 100 names requires deleting individually.
 - Explicit **Delete entry** immediately deletes the selected entry using its retained Cache and Request, without a confirmation dialog. It still prepares a fresh document-bound ticket before committing once. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
 - Explicit **Check for update** and **Unregister** use document-bound confirmation and retained registration references. Update may download/install a worker; completion does not guarantee activation. Unregister may leave existing pages controlled and does not delete Cache Storage. Unknown outcomes are never retried automatically.
+- **Manifest** discovers the first declared link without network access. **Load manifest** performs one explicit CORS request, limited to 256 KiB and 8 seconds; fields are declared values or Inspector reconstructions, not Safari’s processed manifest. **Show source** reuses loaded text. Icons are metadata only; there are no image requests, installability checks or installation.
 - No worker start/stop/restart/skipWaiting, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
 - The execution route and permission boundary are recorded in [ADR 0002](docs/adr/0002-devtools-page-bridge.md). Safari 27.0 navigation under temporary access remains a known limitation.
 
 ## Evidence on Hand
 
-Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker update/unregister controls are implemented with native acceptance pending. Manifest loading and messaging remain planned.
+Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker update/unregister controls are implemented with native acceptance pending. Manifest discovery/loading is implemented with native acceptance pending. Messaging remains planned.
 
 - [Native Safari results and pending acceptance](docs/TESTING.md), versioned separately from automated checks.
 - [Approved visual baseline](.impeccable/review/cache.png), using synthetic data, with tokens and rules in [DESIGN.md](DESIGN.md).

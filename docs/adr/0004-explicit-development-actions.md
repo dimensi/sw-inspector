@@ -1,8 +1,8 @@
 # ADR 0004: Explicit development actions alongside passive inspection
 
-- Status: **Accepted for selected/fixed-list namespaces and selected Cache Storage entry deletion and confirmed worker update/unregister — 2026-10-21**
+- Status: **Accepted for selected/fixed-list namespaces and selected Cache Storage entry deletion confirmed worker update/unregister and explicit bounded manifest loading — 2026-10-21**
 - Date: 2026-10-19
-- Supersedes: the blanket cache-delete and worker-update/unregister prohibitions in ADR 0001 only for explicit confirmed selected namespace/fixed-list batch deletion, explicit direct retained-request entry deletion, or confirmed update/unregister of one retained registration. No manifest-fetch or messaging exception is activated. Other bounded-diagnostics rules remain in force. ADR 0002 is unchanged.
+- Supersedes: the blanket cache-delete and worker-update/unregister prohibitions in ADR 0001 only for explicit confirmed selected namespace/fixed-list batch deletion, explicit direct retained-request entry deletion, or confirmed update/unregister of one retained registration. Explicit bounded manifest loading is also accepted; messaging remains disabled. Other bounded-diagnostics rules remain in force. ADR 0002 is unchanged.
 
 ## Context
 
@@ -18,12 +18,14 @@ C3 enables one selected entry. On explicit user request (2026-10-21), **Delete e
 
 W5 enables confirmed update/unregister for one retained registration from an overview of at most 100 registrations. Overview IDs retain exact registration and active/waiting references for five minutes and are replaced on Refresh; over-limit snapshots remain diagnostic-only. Prepare and commit validate document identity, expiry, registration membership and captured installing/waiting/active references. Update resolves as applied with no activation guarantee; unregister true is applied, false absent, rejection failed. Existing controlled pages and Cache Storage remain independent. After any known or unknown outcome, reread the overview once only for the same document; preserve the action result if that read fails and disable stale handles until Refresh. No automatic retry, worker start/stop/restart/skipWaiting, or atomicity claim is added. Native acceptance remains separate in TESTING.
 
-Manifest fetch, message submission and listeners remain proposed and disabled. These exceptions do not permit arbitrary network probes, offline emulation, broad host permissions, arbitrary code evaluation, telemetry, or background capture.
+M5 enables explicit **Load manifest** for the first discovered manifest link. Discovery and source expansion are passive. The request uses CORS, link-derived credentials/referrer policy and redirect-follow; it reads at most 262144 decoded response bytes with an 8000 ms deadline covering headers and body. Snapshot TTL is 60 seconds with at most eight retained DOM links; page identity, first-element identity and link attributes are rechecked before dispatch and after awaited work. No arbitrary URL input, automatic request/retry, icon/image fetch, installation or installability claim is enabled. Bounded source remains local and excluded from metadata exports; displayed declarations/reconstructed URLs are not Safari’s processed manifest.
+
+Message submission and listeners remain proposed and disabled. These exceptions do not permit arbitrary network probes, offline emulation, broad host permissions, arbitrary code evaluation, telemetry, or background capture.
 
 Retain the devtools-page relay, activeTab permission boundary, synchronous JSON jobs, existing visual system, and metadata-only default exports. Do not introduce direct-panel eval or a content-script fallback without new reproducible evidence.
 
 ## Activation and consequences
 
-The implementation contract and limits live in the [development design](../plans/2026-10-19-development-design.md); small tasks and dependencies are indexed in the [roadmap](../plans/README.md). C1, C2, C3 and W5 activate this scoped decision together with PRODUCT, AGENTS, UI/manifest/package descriptions and release copy. Do not describe planned capabilities as shipped.
+The implementation contract and limits live in the [development design](../plans/2026-10-19-development-design.md); small tasks and dependencies are indexed in the [roadmap](../plans/README.md). C1, C2, C3, W5 and M5 activate this scoped decision together with PRODUCT, AGENTS, UI/manifest/package descriptions and release copy. Do not describe planned capabilities as shipped.
 
 Feature-specific acceptance requires a disposable fixture and native Safari evidence. Reconcile accepted decisions back into ADR 0001 with an explicit superseded-part link. The project retains the distinction between an application message submission and delivery, update completion and activation, registration and control, cache presence and offline behavior.

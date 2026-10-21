@@ -42,6 +42,10 @@ describe('manifest parser', () => {
     expect(result.diagnostics).toEqual([]);
     expect(result.fields.map(row => row.key)).toEqual(['name', 'short_name', 'id', 'start_url', 'scope', 'display', 'orientation', 'theme_color', 'background_color']);
   });
+  it('keeps absent declarations distinct from explicit JSON null for panel display', () => {
+    expect(field(parse({}), 'name').declared).toBeUndefined();
+    expect(field(parse({ name: null }), 'name').declared).toBeNull();
+  });
   it('does not coerce malformed fields and orders diagnostics by field order', () => {
     const result = parse({ background_color: 0, orientation: {}, display: [], scope: false, start_url: 1, id: 7, short_name: null, name: {} });
     expect(field(result, 'name')).toMatchObject({ declared: {}, resolved: null, source: 'unavailable' });

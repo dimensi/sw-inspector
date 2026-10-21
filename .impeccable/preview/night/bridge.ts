@@ -98,6 +98,19 @@ window.nightready = new Promise<void>(resolve => frame.onload = async () => {
     window.nightWorkerCalls.length=0;
     return (await page.navigator.serviceWorker.getRegistrations()).map(registration=>({scope:registration.scope,active:registration.active?.scriptURL}));
   };
+  window.nightManifestRequests=[]; window.nightManifestMode='valid';
+  const realPageFetch=page.fetch.bind(page);
+  page.fetch=async (...args)=>{
+    window.nightManifestRequests.push({url:String(args[0])});
+    const mode=window.nightManifestMode;
+    if(mode==='network-error')throw new page.TypeError('Fixture network read failed');
+    if(mode==='old-delayed')await new Promise(resolve=>window.nightReleaseManifest=resolve);
+    const native=await realPageFetch(...args);
+    if(mode==='valid')return native;
+    let text=mode==='invalid-json'?'<script>window.nightScriptExecuted=true</script>':mode==='too-large'?' '.repeat(262145):JSON.stringify({name:mode==='old-delayed'?'Old delayed manifest':'<img src=x onerror="window.nightScriptExecuted=true"> '+ 'long-manifest-name/'.repeat(60),start_url:'./page.html',icons:[{src:'./same.png',sizes:'192x192'},{src:'./same.png',sizes:'512x512'}]});
+    const response=new page.Response(text,{headers:{'Content-Type':'application/manifest+json'}});
+    Object.defineProperty(response,'url',{value:native.url});return response;
+  };
   window.nightSetManifest = (href='/fixture-manifest.webmanifest') => {
     for(const link of page.document.querySelectorAll('link[rel=manifest]'))link.remove();
     if(href!==null){const link=page.document.createElement('link');link.rel='manifest';link.href=href;page.document.head.append(link);}

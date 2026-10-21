@@ -1,6 +1,6 @@
 # ADR 0001: Read-only, bounded diagnostics
 
-- Status: Accepted; blanket cache-delete prohibition partly superseded by [ADR 0004](0004-explicit-development-actions.md) for confirmed single-namespace/fixed-list batch deletion, explicit direct retained-request entry deletion, and confirmed retained-registration update/unregister.
+- Status: Accepted; blanket cache-delete prohibition partly superseded by [ADR 0004](0004-explicit-development-actions.md) for confirmed single-namespace/fixed-list batch deletion, explicit direct retained-request entry deletion, confirmed retained-registration update/unregister, and explicit bounded Web App Manifest loading.
 - Date: 2026-10-19
 
 ## Context
@@ -10,7 +10,7 @@ SW Inspector diagnoses the inspected origin passively by default; the explicit e
 ## Decision
 
 - Read registrations with `getRegistrations()` and the current controller; never wait for `serviceWorker.ready` to display an empty state.
-- Except for explicit confirmed selected or fixed-list namespace `CacheStorage.delete(name)`, explicit direct selected entry `Cache.delete(retainedRequest)`, or confirmed retained-registration `update()`/`unregister()` under ADR 0004, do not call `fetch`, cache write/delete/add APIs, Service Worker lifecycle/messaging APIs. Update may cause browser-managed script downloads; arbitrary network probes remain forbidden. No telemetry or network backend.
+- Except for explicit confirmed selected or fixed-list namespace `CacheStorage.delete(name)`, explicit direct selected entry `Cache.delete(retainedRequest)`, confirmed retained-registration `update()`/`unregister()`, or explicit bounded `Load manifest` under ADR 0004, do not call `fetch`, cache write/delete/add APIs, Service Worker lifecycle/messaging APIs. Update may cause browser-managed script downloads; arbitrary network probes remain forbidden. No telemetry or network backend.
 - Before `caches.open(name)`, check that the name is present in `caches.keys()`. Report a missing cache rather than intentionally creating it.
 - Inventory and response metadata are separate from body reads. Measure bodies and load previews only after explicit user actions.
 - Identify a cached request by an ephemeral inventory snapshot and index, retaining its original `Request`. A URL alone is not a unique request identity.

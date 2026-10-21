@@ -32,7 +32,7 @@ export function parseManifest(input: ManifestParseInput): ManifestAnalysis {
   let startURL: URL | null = documentURL;
   for (const key of ['name', 'short_name', 'id', 'start_url', 'scope', 'display', 'orientation', 'theme_color', 'background_color']) {
     const exists = Object.hasOwn(root, key);
-    const declared = exists ? root[key] : null;
+    const declared = exists ? root[key] : undefined;
     const text = typeof declared === 'string' ? declared : null;
     if (exists && text === null) issue('field-type', key, 'Expected a string declaration.');
     const field: ManifestField = { key, declared, resolved: null, source: text === null ? 'unavailable' : 'declared' };

@@ -2,7 +2,7 @@
 
 Last updated: October 21, 2026
 
-This policy covers the SW Inspector macOS app and its Safari extension. SW Inspector processes inspection data locally on your Mac. It does not send that data to the developer or to an external service. It has no account system, advertising, analytics SDKs, or telemetry service.
+This policy covers the SW Inspector macOS app and its Safari extension. SW Inspector processes inspection data locally on your Mac. It does not upload diagnostic reports to the developer or a telemetry service. It has no account system, advertising, analytics SDKs, or telemetry service.
 
 ## Data used for inspection
 
@@ -19,6 +19,8 @@ Reports you choose to export remain in your chosen download location until you d
 You can explicitly delete a selected Cache Storage namespace or a fixed list of up to 100 namespaces after confirmation. Deleting one selected cache entry acts directly without a confirmation dialog. These actions affect the inspected website’s Cache Storage locally; they do not clear HTTP cache, cookies, IndexedDB, or localStorage. The website may recreate deleted data. If an action’s result is unknown, refresh to inspect the current state before taking another action.
 
 You can explicitly confirm an update check or unregister one selected Service Worker registration. An update check may make the browser download and install the website’s worker script; completion does not guarantee activation. Unregister does not necessarily stop control of existing pages and does not delete Cache Storage. These actions do not send inspection data to the developer.
+
+You can explicitly load the document’s declared Web App Manifest. This makes one browser request to its resolved URL, which may be on another origin and may include ordinary browser credentials/referrer information according to the link’s policy. The response is bounded to 256 KiB and 8 seconds, held in memory and shown locally. Manifest icons and screenshots are not downloaded, and manifest source is excluded from exported reports. Discovery and showing already loaded source do not make requests.
 
 ## Reports and sharing
 
