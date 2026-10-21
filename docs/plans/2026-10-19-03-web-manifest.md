@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** M1–M2 code-complete (2026-10-21); M3–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1–M3 code-complete (2026-10-21); M4–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -119,16 +119,16 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 **Files:** создать `src/manifest/parse.ts`, `tests/manifest/parse.test.ts`.
 **Interfaces:** экспортировать `parseManifest(input: ManifestParseInput): ManifestAnalysis`; тип `ManifestParseInput` берётся из `src/manifest/types.ts`. Без DOM, сети, extension API и runtime imports из runner.
 
-- [ ] Добавить failing tests `json-shapes`, `url-bases`, `scope-fallback`, `declared-fields`, `icon-indices`, `mime-warning`; запустить `rtk proxy pnpm exec vitest run tests/manifest/parse.test.ts` → FAIL.
-- [ ] JSON.parse с разрешённым первым BOM; syntax error → `invalid-json`, null/array/scalar → `invalid-root`, `{}` → `parsed`. Invalid states не возвращают реконструированные поля/icons.
-- [ ] Поля v1: name, short_name, id, start_url, scope, display, orientation, theme_color, background_color. Не приводить неправильные типы к строке; диагностировать их; неизвестные поля доступны только в source и не считаются ошибками.
-- [ ] `start_url` разрешить относительно input.manifestURL; missing/empty/invalid/cross-origin относительно input.documentURL → fallback document URL. `scope` default = `new URL('.', startURL)`; supplied scope разрешить от input.manifestURL, убрать query/hash, требовать origin и pathname prefix для startURL.
-- [ ] `id`, display/orientation/colors в v1 показывать как Declared: не вычислять browser identity, CSS-color support или применённый режим. Это намеренно ограничивает объём parser; full manifest processing не заявляется.
-- [ ] Fixtures: manifest `https://app.test/assets/m.json`, start `../launch?x=1#h` → `https://app.test/launch?x=1#h`; default scope → `https://app.test/`; cross-origin start → document URL; scope `/app` принимает pathname `/application` по prefix rule.
-- [ ] Icon declarations разрешают src от input.manifestURL и сохраняют исходный index, включая duplicate URLs. Не fetch-ить src; sizes/type/purpose остаются declarations. Не объявлять размеры 192/512 обязательным условием универсальной валидности.
-- [ ] При >128 icons вернуть первые 128 и `icons-truncated` warning с количеством пропущенных. Malformed entries дают path вида `icons[3].src`; неизвестный member сам по себе не ошибка.
-- [ ] Wrong/missing JSON MIME → `json-mime` warning; raw source остаётся доступным. Diagnostics имеют стабильные code/path, deterministic order: document/MIME, fields в указанном порядке, icons по index.
-- [ ] Запустить тот же тест → PASS. Отдельно `fetch` stub должен иметь 0 вызовов для всех parser fixtures.
+- [x] Добавить failing tests `json-shapes`, `url-bases`, `scope-fallback`, `declared-fields`, `icon-indices`, `mime-warning`; запустить `rtk proxy pnpm exec vitest run tests/manifest/parse.test.ts` → FAIL.
+- [x] JSON.parse с разрешённым первым BOM; syntax error → `invalid-json`, null/array/scalar → `invalid-root`, `{}` → `parsed`. Invalid states не возвращают реконструированные поля/icons.
+- [x] Поля v1: name, short_name, id, start_url, scope, display, orientation, theme_color, background_color. Не приводить неправильные типы к строке; диагностировать их; неизвестные поля доступны только в source и не считаются ошибками.
+- [x] `start_url` разрешить относительно input.manifestURL; missing/empty/invalid/cross-origin относительно input.documentURL → fallback document URL. `scope` default = `new URL('.', startURL)`; supplied scope разрешить от input.manifestURL, убрать query/hash, требовать origin и pathname prefix для startURL.
+- [x] `id`, display/orientation/colors в v1 показывать как Declared: не вычислять browser identity, CSS-color support или применённый режим. Это намеренно ограничивает объём parser; full manifest processing не заявляется.
+- [x] Fixtures: manifest `https://app.test/assets/m.json`, start `../launch?x=1#h` → `https://app.test/launch?x=1#h`; default scope → `https://app.test/`; cross-origin start → document URL; scope `/app` принимает pathname `/application` по prefix rule.
+- [x] Icon declarations разрешают src от input.manifestURL и сохраняют исходный index, включая duplicate URLs. Не fetch-ить src; sizes/type/purpose остаются declarations. Не объявлять размеры 192/512 обязательным условием универсальной валидности.
+- [x] При >128 icons вернуть первые 128 и `icons-truncated` warning с количеством пропущенных. Malformed entries дают path вида `icons[3].src`; неизвестный member сам по себе не ошибка.
+- [x] Wrong/missing JSON MIME → `json-mime` warning; raw source остаётся доступным. Diagnostics имеют стабильные code/path, deterministic order: document/MIME, fields в указанном порядке, icons по index.
+- [x] Запустить тот же тест → PASS. Отдельно `fetch` stub должен иметь 0 вызовов для всех parser fixtures.
 
 ### M4: Сериализация и маршрут команды
 
