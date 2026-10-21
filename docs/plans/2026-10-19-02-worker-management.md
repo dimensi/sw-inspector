@@ -162,7 +162,7 @@
 - [ ] Запустить `rtk pnpm test`; ожидается PASS всего набора, не переносить историческое число тестов.
 - [ ] Запустить `rtk pnpm check`, затем `rtk pnpm build:safari`, затем `rtk pnpm check:manifest`; каждую команду отдельно, ожидается exit 0.
 - [ ] Прочитать `rtk cat .output/safari-mv3/manifest.json`: MV3/devtools_page/devtools/activeTab; нет новых host permissions/background/content_scripts.
-- [ ] Запустить `rtk python3 .impeccable/preview/server.py`, открыть `http://127.0.0.1:4186/preview.html?session=preview`; проверить no initial eval и сценарии W5; остановить сервер после проверки.
+- [ ] Запустить `rtk python3 .impeccable/preview/server.py`, открыть `http://127.0.0.1:4186/preview.html?session=preview`; проверить один автоматический initial overview, authenticated panel-return refresh без автоматического чтения bodies и сценарии W5 (прежняя no-initial-eval предпосылка superseded by ADR 0002); остановить сервер после проверки.
 - [ ] Для native использовать только управляемый тестовый origin с worker v1/v2 и известным кэшем; чужой сайт из исторического TESTING не является разрешением unregister.
 - [ ] Зафиксировать Safari/macOS build, revision/bundle, installation route, origin, access gesture и evidence. Для Xcode wrapper сначала `rtk pnpm sync:safari`; temporary bundle тестировать отдельно.
 - [ ] Update одинакового worker: check completed, activation не обещана. Update v2: новый installing/waiting виден после Refresh, controller может оставаться v1.

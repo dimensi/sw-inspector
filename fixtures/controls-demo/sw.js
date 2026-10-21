@@ -1,2 +1,2 @@
-// C1–C4 Cache Storage checks do not require a Service Worker.
-// Reserved for the later worker-management fixture; not registered and no fetch interception.
+// Served with explicit v1/v2 bytes by server.py; no automatic activation helpers.
+const FIXTURE_VERSION = '__FIXTURE_VERSION__';

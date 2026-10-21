@@ -1,12 +1,62 @@
 <!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SW Inspector disposable controls fixture</title>
-<h1>Disposable Cache Storage fixture</h1>
+<h1>Disposable inspection fixture</h1>
 <p>Use only on a disposable localhost origin. All fixture cache names begin with <code>sw-inspector-fixture-</code>. Nothing runs automatically.</p>
 <button id="seed">Seed fixture</button> <button id="inspect">Inspect fixture caches</button> <button id="cleanup">Cleanup fixture</button>
 <p>Native fault injection only: <button id="delay">Delay next fixture deletion result</button> <button id="restore" disabled>Restore normal deletion</button></p>
 <p id="delay-status" role="status">Normal deletion. The optional helper delays one successful fixture namespace deletion result by 10 seconds, after the deletion has happened. Reload restores normal behavior.</p>
 <pre id="result" role="status"></pre>
+<h2>Isolated worker fixture</h2>
+<p>Run <code>python3 fixtures/controls-demo/server.py</code> for these controls. <a href="/sw-inspector-worker/">Open worker test page</a> to use the isolated worker scope. No registration, update, activation or reload runs automatically.</p>
+<p><button id="worker-v1">Serve worker v1</button> <button id="worker-v2">Serve worker v2</button> <button id="worker-register">Register fixture worker</button> <button id="worker-inspect">Inspect fixture worker</button> <button id="worker-remove">Remove fixture worker</button></p>
+<p>Serve v1, register, then reload this scoped page manually to obtain a controller. Serve v2 changes only the bytes served at the same script URL; use the Inspector’s Check for update to request an update. A new worker may wait while this page stays controlled. Removing the registration leaves Cache Storage unchanged.</p>
+<pre id="worker-result" role="status">Worker fixture not inspected.</pre>
 <script type="module">
+const workerScope = new URL('/sw-inspector-worker/', location.origin).href;
+const workerScript = new URL('sw.js', workerScope).href;
+const workerResult = document.querySelector('#worker-result');
+function requireLocalWorkerPage() {
+  if (!['http://localhost:4174', 'http://127.0.0.1:4174'].includes(location.origin)
+    || location.pathname !== '/sw-inspector-worker/') throw new Error('Open the isolated worker test page on localhost:4174 first.');
+}
+function isFixtureRegistration(registration) {
+  return registration.scope === workerScope && ['installing', 'waiting', 'active']
+    .every(slot => !registration[slot] || registration[slot].scriptURL === workerScript);
+}
+function describeWorker(worker) { return worker ? { scriptURL: worker.scriptURL, state: worker.state } : null; }
+async function inspectWorker() {
+  const version = await fetch('/worker-version', { cache: 'no-store' });
+  if (!version.ok) throw new Error('Start the fixture server.py to serve worker versions.');
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  workerResult.textContent = JSON.stringify({ served: await version.json(), scope: workerScope,
+    controller: describeWorker(navigator.serviceWorker.controller),
+    registrations: registrations.filter(row => row.scope === workerScope).map(row => ({ scope: row.scope,
+      installing: describeWorker(row.installing), waiting: describeWorker(row.waiting), active: describeWorker(row.active) })),
+  }, null, 2);
+}
+function workerAction(id, run) {
+  document.querySelector(id).onclick = async () => {
+    try { requireLocalWorkerPage(); await run(); await inspectWorker(); }
+    catch (error) { workerResult.textContent = String(error); }
+  };
+}
+for (const version of [1, 2]) workerAction('#worker-v' + version, async () => {
+  const reply = await fetch('/worker-version', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ version }) });
+  if (!reply.ok) throw new Error('Unable to select worker source. Start the fixture server.py.');
+});
+workerAction('#worker-register', async () => {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  if (registrations.some(row => row.scope === workerScope && !isFixtureRegistration(row))) throw new Error('Another script occupies the fixture scope. Stop; it will not be replaced.');
+  await navigator.serviceWorker.register(workerScript, { scope: workerScope, updateViaCache: 'none' });
+});
+workerAction('#worker-inspect', async () => {});
+workerAction('#worker-remove', async () => {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  const selected = registrations.find(row => row.scope === workerScope);
+  if (!selected) return;
+  if (!isFixtureRegistration(selected)) throw new Error('Another script occupies the fixture scope. Stop; it will not be removed.');
+  await selected.unregister();
+});
 const prefix = 'sw-inspector-fixture-';
 const result = document.querySelector('#result');
 const delayButton = document.querySelector('#delay');
