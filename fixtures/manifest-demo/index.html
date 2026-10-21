@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SW Inspector manifest fixture</title>
+<!-- MANIFEST_LINK -->
+</head><body><h1>Disposable manifest fixture</h1>
+<p>Case: <strong><!-- CASE_NAME --></strong>. Both fixture origins are loopback-only: 127.0.0.1:4187 and 127.0.0.1:4188. No real credentials or external resources are used.</p>
+<nav aria-label="Fixture cases"><a href="/?case=absent">Absent</a> · <a href="/?case=valid">Valid</a> · <a href="/?case=redirect">Redirect</a> · <a href="/?case=invalid-json">Invalid JSON</a> · <a href="/?case=wrong-mime">Wrong MIME</a> · <a href="/?case=slow">Slow body</a> · <a href="/?case=large">Too large</a> · <a href="/?case=cors-denied">CORS denied</a> · <a href="/?case=credentials">Credentials</a> · <a href="/?case=csp-connect">CSP connect restriction</a> · <a href="/?case=csp-manifest">CSP manifest restriction</a></nav>
+<p>In SW Inspector: Refresh → Manifest → Discover manifest → Load manifest → Show source. Discover and Show source should not make Inspector requests. The browser may independently fetch the declarative manifest link; request counters separate destination hints instead of attributing every request to the Inspector.</p>
+<p>Redirects can produce multiple HTTP hops from one Load action. The slow case sends headers and a body prefix, then waits 9 seconds; the Inspector should stop waiting at 8 seconds. The large case sends exactly 262145 bytes. No image preview or installation is requested by this fixture.</p>
+<p>Credentials case: <button id="cookie">Set fake credential cookie</button>, then explicitly Load manifest. The cookie is only <code>manifest-fixture=demo</code>; request reports show its presence, never any other cookie content.</p>
+<button id="inspect">Inspect fixture requests</button> <button id="reset">Reset request counters</button>
+<pre id="result" role="status">Request counters have not been inspected.</pre>
+<p>CSP cases intentionally distinguish normal fetch from browser manifest processing. A successful or failed Inspector read is not an installability result. Native Safari acceptance remains separate from Chrome fixture checks.</p>
+<script type="module">
+const result = document.querySelector('#result');
+async function inspect() {
+  const reply = await fetch('/stats', { cache: 'no-store' });
+  result.textContent = JSON.stringify(await reply.json(), null, 2);
+}
+function action(id, run) { document.querySelector(id).onclick = async () => { try { await run(); await inspect(); } catch (error) { result.textContent = String(error); } }; }
+action('#inspect', async () => {});
+action('#reset', async () => { const reply = await fetch('/stats/reset', { method: 'POST' }); if (!reply.ok) throw new Error('Unable to reset counters.'); });
+action('#cookie', async () => { const reply = await fetch('/fake-cookie', { method: 'POST' }); if (!reply.ok) throw new Error('Unable to set dummy cookie.'); });
+</script></body></html>

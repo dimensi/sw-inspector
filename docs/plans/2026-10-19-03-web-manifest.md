@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** M1–M5 code-complete (2026-10-21); M6 acceptance pending. Manifest UI доступен; scoped Load manifest exception активирован вместе с M5, native Safari acceptance pending. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1–M6 code-complete (2026-10-21); native Safari acceptance pending. Manifest UI доступен; scoped Load manifest exception активирован вместе с M5, native Safari acceptance pending. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -14,7 +14,7 @@
 
 ## Global Constraints
 
-- До активации плана ничего из перечисленного ниже не реализуется; текущее ограничение ADR 0001 «Do not call `fetch`» продолжает действовать.
+- Scoped Load manifest exception активирован вместе с M5 UI; ADR 0001 сохраняет запреты на остальные произвольные fetch/probes. План не разрешает будущие messaging или icon requests.
 - Foundation остаётся пассивным. Если Manifest выпускается первым, M6 активирует [ADR 0004](../adr/0004-explicit-development-actions.md) только для явного **Load manifest**; cache/worker/message действия и остальные сетевые probes остаются запрещены до своих отдельных выпусков.
 - Все shell-команды начинаются с `rtk`; commits/push выполняются только при отдельной авторизации. Не затрагивать чужие изменения.
 - Нативный eval остаётся в `devtools_page`; существующие relay, session/sender проверки и `devtools` + `activeTab` не меняются.
@@ -164,17 +164,19 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 
 **Files:** создать `fixtures/manifest-demo/index.html`, `fixtures/manifest-demo/server.py`; обновить `docs/TESTING.md`, `docs/adr/0004-explicit-development-actions.md`, `PRODUCT.md`, `AGENTS.md`, `README.md`, `DESIGN.md`, `package.json`, `wxt.config.ts`, `entrypoints/panel/App.svelte` в объёме выпускаемой функции. Generated bundles руками не редактировать.
 
-- [ ] Перед выпуском принять в ADR 0004 только реализованное исключение **Load manifest**: явный GET, 256 KiB/8 s, без icon fetch/установки/проверки URL. Если ADR уже активирован другим выпуском, добавить только Manifest; не включать будущие cache/worker/message возможности.
-- [ ] Обновить PRODUCT/AGENTS/README и DESIGN copy: discovery/passive inspection не создаёт сеть; Load manifest создаёт один явный запрос. Сохранить остальные запреты ADR 0001; foundation сам по себе ничего не активирует.
-- [ ] Уточнить UI и package/config descriptions в пределах поставляемой функции: toolbar label `Inspect`, функция `Load manifest`, короткое описание `Service Worker, Cache Storage and Web App Manifest inspection for Safari.` Не обещать cache deletion, worker controls или messaging, если они ещё не выпущены.
+- [x] Перед выпуском принять в ADR 0004 только реализованное исключение **Load manifest**: явный GET, 256 KiB/8 s, без icon fetch/установки/проверки URL. Если ADR уже активирован другим выпуском, добавить только Manifest; не включать будущие cache/worker/message возможности.
+- [x] Обновить PRODUCT/AGENTS/README и DESIGN copy: discovery/passive inspection не создаёт сеть; Load manifest создаёт один явный запрос. Сохранить остальные запреты ADR 0001; foundation сам по себе ничего не активирует.
+- [x] Уточнить UI и package/config descriptions в пределах поставляемой функции: toolbar label `Inspect`, функция `Load manifest`, короткое описание `Service Worker, Cache Storage and Web App Manifest inspection for Safari.` Не обещать cache deletion, worker controls или messaging, если они ещё не выпущены.
 
-- [ ] Выполнить `rtk proxy pnpm test`, `rtk proxy pnpm check`, `rtk proxy pnpm build:safari`, `rtk proxy pnpm check:manifest`; ожидается PASS каждого. Проверить generated manifest: только devtools/activeTab, без host/background/content scripts.
-- [ ] Fixture server на стандартной библиотеке Python обслуживает только `127.0.0.1:4187` и `127.0.0.1:4188`; запуск `rtk proxy python3 fixtures/manifest-demo/server.py`. HTML принимает `?case=absent|valid|redirect|invalid-json|wrong-mime|slow|large|cors-denied|credentials`.
-- [ ] Server возвращает локальные manifest responses динамически; slow задерживает body >8 s, large выдаёт 262145 bytes, redirect меняет каталог, cors-denied не выставляет разрешающий header. Credentials case использует только фиктивный cookie, не данные пользователя; никаких внешних URL.
+- [x] Выполнить `rtk proxy pnpm test`, `rtk proxy pnpm check`, `rtk proxy pnpm build:safari`, `rtk proxy pnpm check:manifest`; ожидается PASS каждого. Проверить generated manifest: только devtools/activeTab, без host/background/content scripts.
+- [x] Fixture server на стандартной библиотеке Python обслуживает только `127.0.0.1:4187` и `127.0.0.1:4188`; запуск `rtk proxy python3 fixtures/manifest-demo/server.py`. HTML принимает `?case=absent|valid|redirect|invalid-json|wrong-mime|slow|large|cors-denied|credentials`.
+- [x] Server возвращает локальные manifest responses динамически; slow задерживает body >8 s, large выдаёт 262145 bytes, redirect меняет каталог, cors-denied не выставляет разрешающий header. Credentials case использует только фиктивный cookie, не данные пользователя; никаких внешних URL.
 - [ ] Проверить реальный Safari: Load делает один запрос; Discover/Show source/Refresh и icon rows — ноль запросов; ошибки не убирают worker/cache данные. Отдельно CSP `manifest-src`/`connect-src` не превращать в installability conclusion.
 - [ ] Проверить reload того же URL, SPA navigation, concurrent Inspectors и отзыв доступа во время загрузки. Stale result не публикуется; текущую ручную Refresh после навигации не скрывать.
 - [ ] Записать точные Safari/macOS версии, revision/bundle, installation route, origin, permission gesture, action/result. Для Xcode route сначала `rtk proxy pnpm sync:safari`; сравнивать идентичные bundles.
-- [ ] Сохранить pending строки, если native случай не выполнен. Проверить local docs links и metadata export: raw source/icon bytes отсутствуют.
+- [x] Сохранить pending строки, если native случай не выполнен. Проверить local docs links и metadata export: raw source/icon bytes отсутствуют.
+
+**M6 handoff:** two-origin fixture cases реально проверены в одном Chrome через actual App/transport/serialized runner; это отдельное доказательство от native Safari. Повторное compiled proof сохранило cache/worker/manifest контракты. Существующий signed wrapper по прежнему `/tmp/sw-inspector-a1-signed` пути пересобран без запуска; strict deep codesign и точные output/repository/embedded Resources comparisons прошли. Standard Xcode LaunchServices step выполнялся только для этого прежнего пути, без ручной регистрации/дополнительных копий. Все native Safari пункты выше остаются unchecked; **Refresh after navigation** сохраняется. Точные результаты, hash и команды принадлежат TESTING, четыре утренних шага — MORNING-CHECKLIST.
 
 ## Источники и границы интерпретации
 
@@ -186,7 +188,7 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 
 ## Handoff
 
-- [ ] Выполнять только после разрешения реализации общего дизайна и завершения пассивного foundation; сохранить frozen interfaces и последовательность M1 → M2 → M3 → M4 → M5 → M6. Manifest может выпускаться без cache/worker/message функций; scope активирует его собственная M6.
-- [ ] После каждой задачи передать следующему исполнителю paths, команды/результаты, принятые контракты и pending native checks. Не объявлять план выполненным по одному build.
-- [ ] Поздний icon preview требует отдельной задачи с явным сетевым действием, byte/decode limits и Safari evidence; v1 не резервирует для него permissions или скрытые fetches.
-- [ ] Окончательный отчёт разделяет implemented, automated/synthetic verified и native verified; остающиеся ограничения отражает в TESTING, а этот файл остаётся планом, не источником runtime evidence.
+- [x] Выполнять только после разрешения реализации общего дизайна и завершения пассивного foundation; сохранить frozen interfaces и последовательность M1 → M2 → M3 → M4 → M5 → M6. Manifest может выпускаться без cache/worker/message функций; scope активирует его собственная M6.
+- [x] После каждой задачи передать следующему исполнителю paths, команды/результаты, принятые контракты и pending native checks. Не объявлять план выполненным по одному build.
+- [x] Поздний icon preview требует отдельной задачи с явным сетевым действием, byte/decode limits и Safari evidence; v1 не резервирует для него permissions или скрытые fetches.
+- [x] Окончательный отчёт разделяет implemented, automated/synthetic verified и native verified; остающиеся ограничения отражает в TESTING, а этот файл остаётся планом, не источником runtime evidence.
