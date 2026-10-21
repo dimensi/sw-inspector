@@ -23,3 +23,12 @@ describe('buildReport', () => {
     expect(report.warnings).toContain('URLs and response headers can contain sensitive data. Review before sharing.');
   });
 });
+
+it('exports explicit worker metadata without ephemeral handles or future payload fields', () => {
+  const worker = { workerId: 'private-worker', scriptURL: 'https://app.test/sw.js', state: 'activated', payload: 'private-payload', rawSource: 'private-source' };
+  const overview = { page: { documentId: 'private-doc', origin: 'https://app.test', url: 'https://app.test/' }, origin: 'https://app.test', registrations: [{ registrationId: 'private-registration', scope: 'https://app.test/', active: worker, waiting: null, installing: null, payload: 'private-payload' }], controller: worker, caches: [], storage: { usageBytes: null, quotaBytes: null }, warnings: [] };
+  const raw = buildReport({ timestamp: 'now', userAgent: 'Safari', overview, inventories: [], measurements: [], checks: [] });
+  const report = JSON.parse(raw); expect(report.overview.registrations).toEqual([{ scope: 'https://app.test/', active: { scriptURL: worker.scriptURL, state: 'activated' }, waiting: null, installing: null }]);
+  expect(report.overview.controller).toEqual({ scriptURL: worker.scriptURL, state: 'activated' });
+  for (const canary of ['private-worker', 'private-registration', 'private-payload', 'private-source', 'private-doc']) expect(raw).not.toContain(canary);
+});

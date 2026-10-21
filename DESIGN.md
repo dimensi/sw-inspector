@@ -1,6 +1,6 @@
 ---
 name: SW Inspector
-description: Compact Safari inspection workspace with explicit worker/cache actions and declared Web App Manifest inspection
+description: Compact Safari inspection workspace with explicit worker/cache actions, declared Web App Manifest inspection and opt-in Messages
 colors:
   background: "#fff"
   chrome: "#f2f2f2"
@@ -257,6 +257,12 @@ Warnings and errors are full-width local strips with semantic color and plain te
 ### Manifest inspection
 
 The Manifest destination reuses the neutral toolbar, property rows, dense tables and local notices. Discover manifest, Load manifest and Show source are explicit separate controls; no request runs on mount, destination change, Refresh, discovery or source expansion. Label declarations and Inspector URL reconstructions separately, retain the Safari-processing disclaimer, and render source as escaped text in a named keyboard-scrollable region. Icon rows are metadata only, never images. Keep manifest errors inside its pane and reset/abort local operations on page/Refresh/unmount. No new tokens are introduced.
+
+### Messages
+
+The Messages destination reuses compact native registration and active/waiting selects, a bounded JSON textarea, an optional supplied-port reply checkbox and neutral **Send…** above a dense journal. Keep **Start listening**, **Stop listening** and **Clear log** in a neutral toolbar; listening, dropped rows, local errors and submission outcomes stay beside the operation. Use the common confirmation and preserve its exact opener focus.
+
+The journal uses Time/Direction/Source/Status columns and an adjacent text details pane. Preserve selection and keyboard navigation as rows arrive. Selected rows must remain blue with readable white text while hovered, including the Time button; its hover/active surface stays transparent. Long sources and payload text scroll locally, and the detail pane stacks below the journal in the narrow dock. Render all content as escaped text, with no chat bubbles, message presets, images or decorative surfaces. Reuse existing tokens and controls; no new tokens are introduced.
 
 ### Worker actions
 

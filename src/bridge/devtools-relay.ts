@@ -110,8 +110,13 @@ export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onSh
     }).catch(() => { /* The panel may have closed. */ });
   };
   const onHidden = () => {
+    if (disposed) return;
     lifecycle.hiddenEpoch += 1;
     visible = false;
+    const epoch = lifecycle.hiddenEpoch;
+    void Promise.resolve().then(() => {
+      if (!disposed) return runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session, epoch });
+    }).catch(() => { /* The panel may already be closed. */ });
   };
   try {
     panel.onShown.addListener(onShown);
@@ -131,6 +136,7 @@ export function installPanelVisibilityRelay(runtime: RelayRuntime, panel: { onSh
 export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeoutMs = 15_000) {
   const session = new URL(panelUrl).searchParams.get('session');
   let appliedEpoch = 0;
+  let hiddenEpoch = 0;
   let activationGeneration = 0;
   let initializing = false;
   let initialized = true;
@@ -163,6 +169,9 @@ export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeou
       if (message.session !== session || !matchesSender(runtime, sender, 'devtools.html')) return;
       if (kind === 'sw-inspector/panel-returned') {
         if (!initializing && initialized) applyPanelEpoch(message.epoch, listener);
+      } else if (kind === 'sw-inspector/panel-hidden') {
+        const epoch = message.epoch;
+        if (typeof epoch === 'number' && Number.isSafeInteger(epoch) && epoch > hiddenEpoch && epoch > appliedEpoch) { hiddenEpoch = epoch; listener(); }
       } else listener();
       return undefined;
     };
@@ -223,5 +232,6 @@ export function createPanelRelay(runtime: RelayRuntime, panelUrl: string, timeou
     cancelPanelActivation: () => { activationGeneration += 1; },
     subscribeNavigation: (listener: () => void) => subscribe('sw-inspector/navigated', listener),
     subscribePanelReturn: (listener: () => void) => subscribe('sw-inspector/panel-returned', listener),
+    subscribePanelHidden: (listener: () => void) => subscribe('sw-inspector/panel-hidden', listener),
   };
 }

@@ -22,7 +22,7 @@ class FixtureHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == WORKER_SCOPE + 'sw.js':
-            # No fetch interception, claim, skipWaiting, cache writes or messaging.
+            # No fetch interception, claim, skipWaiting, cache writes or automatic messages; cooperative commands are explicit.
             source = (ROOT / 'sw.js').read_text().replace('__FIXTURE_VERSION__', str(FixtureHandler.worker_version))
             self.send_bytes(200, source.encode(), 'text/javascript; charset=utf-8')
         elif self.path == '/worker-version':

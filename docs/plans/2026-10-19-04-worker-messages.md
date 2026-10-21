@@ -1,12 +1,14 @@
 # Service Worker Messages Implementation Plan
 
+> Архив завершённой реализации: этот файл сохраняет контракт и историю задач, а не активные инструкции на повторное выполнение. Native Safari acceptance остаётся открытой; следующий шаг — [утренний список](../MORNING-CHECKLIST.md), фактические результаты — [TESTING](../TESTING.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Коммиты только по отдельному указанию.
 
 **Goal:** Послать JSON выбранному active/waiting worker, получить кооперативный ответ по port и наблюдать сообщения, доставленные inspected document.
 **Architecture:** Общий action controller для отправки; отдельная opt-in message session, bounded buffer и leased page listeners. Всё через текущий relay и start/poll, без перехвата browser protocol.
 **Tech Stack:** TypeScript/Svelte 5, ServiceWorker.postMessage, MessageChannel, ServiceWorkerContainer events, Vitest.
 **Spec:** [development design](2026-10-19-development-design.md), [00](2026-10-19-00-action-foundation.md), [02/W1 worker handles](2026-10-19-02-worker-management.md).
-**Status:** S1–S3 code-complete (2026-10-21); S4 planned. No Messages UI or send policy activation; page-side sends and optional owned-port replies use confirmed action tickets. Dependencies: A1–A4 и W1. W2/W3 для send не нужны.
+**Status:** S1-S4 code-complete (2026-10-21). Messages UI and scoped confirmed send/opt-in listener policy are active. Native Safari release acceptance remains pending; executed checks and outstanding cases are owned by [TESTING](../TESTING.md). Dependencies: A1-A4 and W1.
 
 ## Global Constraints
 
@@ -95,15 +97,20 @@ Open session не ставит listeners и не посылает сообщен
 ## S4 — Явный приём сообщений страницы и UI
 
 **Files:** create `entrypoints/panel/MessagesPane.svelte`, `src/ui/message-session-controller.ts`, `tests/ui/message-session-controller.test.ts`; modify App/Icon, fixtures/controls-demo index/sw и TESTING.
-**Interfaces:** MessagesPane props `{page:PageIdentity|null,registrations:Registration[],onintent:(intent:ActionIntent)=>void}`; локальный controller `createMessageSessionController({invoke,onState,getPage})` с методами `open():Promise<MessageSession|null>`, `startListening():Promise<void>`, `stop():Promise<void>`, `dispose():void`. onState даёт `{session,rows,listening,error,dropped}`; row retention в панели также500/2MiB. Controller scheduling serial 1s, без overlap; dispose синхронно выключает polling, stop best effort.
+**Interfaces:** MessagesPane props `{page:PageIdentity|null,registrations:Registration[],onintent:(intent:ActionIntent)=>void,invoke:Transport["invoke"],busy:boolean,settlementToken:number,refreshToken:number}`; локальный controller `createMessageSessionController({invoke,onState,getPage})` с методами `open():Promise<MessageSession|null>`, `startListening():Promise<void>`, `stop():Promise<void>`, `dispose():void`, `read():Promise<void>` для settlement существующего buffer. onState даёт `{session,rows,listening,error,dropped}`; row retention в панели также500/2MiB. Controller scheduling serial 1s, без overlap; dispose синхронно выключает polling, stop best effort.
 
-- [ ] Тест start/stop/restart: свои message/messageerror listeners не дублируются и не заменяют page onmessage; Start listening не посылает сообщение. Native event.source scriptURL только metadata, не authentication/доказательство controller.
-- [ ] Тесты session lease истекает после потери панели; permission failure прекращает polling и продление; view hide/Refresh/navigation обнуляют draft/targets/rows и вызывают dispose. Очистка видимого журнала (**Clear log**) продвигает cursor, не останавливает listener и не очищает данные сайта.
-- [ ] `rtk proxy pnpm exec vitest run tests/messages tests/ui/message-session-controller.test.ts` → сначала FAIL новых кейсов, затем PASS после реализации.
-- [ ] Добавить Messages в sidebar и compact select. Сверху target registration + active/waiting, textarea JSON, reply checkbox, **Send…**. Отдельно **Start listening / Stop listening**, **Clear log**, индикатор listening/expired/dropped; ниже плотная таблица Time/Direction/Source/Status и text details. Не декоративный chat UI, не message bubbles. Send enabled при valid page/target/JSON даже без session: click сначала await controller.open(), затем prepare с возвращённым sessionId, без включения listener. На время open/prepare/commit Send disabled; неудачный open показывает local error и допускает только явный новый click.
-- [ ] Synthetic fixture поддерживает только документированные локальные команды: echo по supplied port, no-reply, delayed-reply, page-directed message. Вариант «Activate waiting worker» показывать только как пользовательский JSON к fixture, в продукте не создавать preset SKIP_WAITING. Fixture side effects не переносить в generic inspected page.
-- [ ] Проверить реальные browser MessageChannel и ServiceWorker API, UTF-8/hostile text, narrow/light/dark, keyboard, multiple Inspector sessions. Official Svelte MCP для компонентов, общие code checks, native Safari send/reply/listen/stop/reload на disposable fixture. Записать, какие проверки действительно выполнены.
-- [ ] Обновить PRODUCT/ADR0004/copy только для реализованных возможностей; никакого automatic payload export или persisted draft. Pending native cases не заменять success по mocks.
+**S4 contract clarification:** explicit props above connect the one existing transport/common action busy state and send-settlement read. Authenticated panel-hidden signal uses existing sender/session validation and monotonic epochs distinct from return handling; delayed old hidden signals cannot stop a new session after return. Worker/controller metadata export is allowlisted to scope/scriptURL/state, excluding ephemeral IDs and unexpected payload/source fields.
+
+- [x] Тест start/stop/restart: свои message/messageerror listeners не дублируются и не заменяют page onmessage; Start listening не посылает сообщение. Native event.source scriptURL только metadata, не authentication/доказательство controller.
+- [x] Тесты session lease истекает после потери панели; permission failure прекращает polling и продление; view hide/Refresh/navigation обнуляют draft/targets/rows и вызывают dispose. Очистка видимого журнала (**Clear log**) продвигает cursor, не останавливает listener и не очищает данные сайта.
+- [x] `rtk proxy pnpm exec vitest run tests/messages tests/ui/message-session-controller.test.ts` → сначала FAIL новых кейсов, затем PASS после реализации.
+- [x] Добавить Messages в sidebar и compact select. Сверху target registration + active/waiting, textarea JSON, reply checkbox, **Send…**. Отдельно **Start listening / Stop listening**, **Clear log**, индикатор listening/expired/dropped; ниже плотная таблица Time/Direction/Source/Status и text details. Не декоративный chat UI, не message bubbles. Send enabled при valid page/target/JSON даже без session: click сначала await controller.open(), затем prepare с возвращённым sessionId, без включения listener. На время open/prepare/commit Send disabled; неудачный open показывает local error и допускает только явный новый click.
+- [x] Synthetic fixture поддерживает только документированные локальные команды: echo по supplied port, no-reply, delayed-reply, page-directed message. Вариант «Activate waiting worker» показывать только как пользовательский JSON к fixture, в продукте не создавать preset SKIP_WAITING. Fixture side effects не переносить в generic inspected page.
+- [x] Real Chrome MessageChannel/ServiceWorker APIs, bounded UI/keyboard/theme/width/error cases through actual App/transport, official Svelte tools and required code/build/compiled checks are verified. TESTING owns the exact executed matrix.
+- [ ] Native Safari send/reply/listen/stop/reload and Network-tab hide/return remain pending release acceptance. Advanced browser multiple-Inspector/navigation races remain pending where not executed in TESTING; unit identity/generation/lease tests do not replace them.
+- [x] Обновить PRODUCT/ADR0004/copy только для реализованных возможностей; никакого automatic payload export или persisted draft. Pending native cases не заменять success по mocks.
+
+**S4 completion note:** approved explicit props/controller read and authenticated hidden lifecycle are implemented. Send settlement reads the existing message batch without overview; failed prepare/read stops the local session, reset boundaries clear drafts/targets/logs, and return remains idle. No activation helper or product message presets were added. The final same-path signed wrapper is prepared without launch; packaging proves resource identity/signing only, not Safari runtime acceptance.
 
 ## Источники
 

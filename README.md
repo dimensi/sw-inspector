@@ -1,6 +1,6 @@
 # SW Inspector
 
-Service Worker and Cache Storage diagnostics with confirmed worker update/unregister, confirmed namespace deletion and direct selected entry deletion inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, declared Web App Manifest data, and a local JSON report.
+Service Worker and Cache Storage diagnostics with confirmed worker update/unregister, confirmed namespace deletion and direct selected entry deletion inside Safari Web Inspector. The panel shows registrations and the current controller, cache request keys, response metadata, optional text previews and body measurements, origin storage estimates, cache-key checks, declared Web App Manifest data, explicit confirmed JSON messaging with opt-in replies/listening, and a local metadata-only JSON report.
 
 ## Support
 
@@ -51,6 +51,8 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 
 **Manifest** has three explicit steps: **Discover manifest** reads the first declared link from the current document without network access; **Load manifest** makes one CORS request with a 256 KiB/8-second limit; **Show source** displays the already loaded text without another request. The link controls credentials/referrer policy, so the request may use ordinary browser credentials. Fields and icon URLs are declarations or Inspector reconstructions; icons are never downloaded, and this is not Safari’s processed manifest or an installability check. Refresh/navigation clears local manifest results. Manifest source stays out of metadata exports.
 
+**Messages** sends confirmed JSON to one selected active/waiting worker. Payloads are limited to 16 KiB UTF-8; the target and raw JSON appear in confirmation with the warning that website code may change website state. A posted receipt confirms submission only. Optional supplied-port replies time out after five seconds without implying failed delivery; **Start listening** observes ordinary messages delivered to this document, without request correlation. No automatic ping, presets or payload export is provided. Hide, Refresh, navigation and permission failure clear the temporary session/draft/log; returning requires explicit Start listening. **Clear log** only clears the visible log and keeps the cursor/listener.
+
 ## Project documents
 
 | Document | Purpose |
@@ -63,7 +65,7 @@ The Xcode wrapper under `apple/` has a separate copy of extension resources. Run
 | [ADR 0003](docs/adr/0003-inspector-design.md) | Safari Storage/Network design decision |
 | [TESTING.md](docs/TESTING.md) | Verification procedure, recorded evidence, and open Safari checks |
 | [LEARNINGS.md](docs/LEARNINGS.md) | Concrete failure modes and prevention rules |
-| [Development plans](docs/plans/README.md) | Small implementation tasks for cache deletion, SW management, manifest inspection and messaging; not yet shipped |
+| [Development plans](docs/plans/README.md) | Small implementation tasks for cache deletion, SW management, manifest inspection and messaging; implementation and pending native acceptance |
 | [App Store assets](marketing/app-store/README.md) | English screenshots, promotional mockups, and reproducible capture sources |
 
 The [standalone eval reproduction](diagnostics/safari-eval-repro/README.md) remains available for browser regressions. A passing build or synthetic UI preview is not native Safari acceptance.
@@ -73,6 +75,8 @@ The [standalone eval reproduction](diagnostics/safari-eval-repro/README.md) rema
 Use a separate disposable origin, `http://localhost:4174`, for deletion checks. From the repository run `rtk proxy python3 fixtures/controls-demo/server.py`, then open that origin. **Seed fixture** explicitly creates only `sw-inspector-fixture-*` caches from local text; **Cleanup fixture** deletes only that prefix. Neither runs automatically. **Inspect fixture caches** reads current names and key counts independently of the panel. Nothing registers automatically. Cache fixture buttons do not register workers or fetch remote data. Native Safari acceptance is recorded in [TESTING.md](docs/TESTING.md).
 
 For worker checks, open [the isolated worker test page](http://localhost:4174/sw-inspector-worker/). **Serve worker v1** selects bytes on the local server; **Register fixture worker** explicitly registers only `/sw-inspector-worker/sw.js` for `/sw-inspector-worker/`. Wait for activation, then reload this scoped page manually to obtain a controller. **Serve worker v2** changes the bytes at the same script URL without requesting an update; use the panel’s **Check for update** and Refresh to inspect installing/waiting separately from active/controller. No `skipWaiting`, `clients.claim`, automatic update, reload or fetch interception is used. **Inspect fixture worker** reads that scope and controller independently. **Remove fixture worker** unregisters only that exact scope with the known fixture script; it leaves all caches intact. A foreign script at that scope causes refusal instead of replacement/removal. The server binds only to loopback and accepts version changes only from the fixture origin. Native Safari acceptance remains pending.
+
+For Messages, manually enter `{"fixture":"echo","value":"hello"}` with **Request reply on supplied port**, or `{"fixture":"delayed-reply","value":"hello"}` for a one-second reply. `{"fixture":"no-reply"}` exercises the honest five-second timeout. With **Start listening** enabled, `{"fixture":"page-directed","value":"hello"}` emits an ordinary source-page message with no request correlation. These are cooperative fixture-only commands, never product presets; registration and every send remain explicit. Native Safari send/reply/listen/Network-return acceptance remains pending.
 
 For the pending native navigation race check, **Delay next fixture deletion result** explicitly arms a fixture-only, one-shot fault injection. It restores the original `CacheStorage.delete` method before awaiting the actual deletion, then holds one successful `sw-inspector-fixture-*` deletion result for 10 seconds. Other namespace calls are unchanged. **Restore normal deletion** disarms an unused helper; reloading also restores normal behavior. Seed/Cleanup remain ordinary operations unless the helper is explicitly armed. Before batch testing, use **Inspect fixture caches**: `otherCacheCount` must be `0` and `otherCaches` empty. Other namespaces are listed by name only, without opening them or reading their contents. Stop if any unrelated namespace exists; also confirm the panel’s complete deletion list contains only fixture names. This helper is not included in the extension bundle.
 

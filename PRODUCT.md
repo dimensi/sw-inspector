@@ -12,7 +12,7 @@ Developers inspecting a web origin in Safari Web Inspector on macOS. They need t
 
 ## Product Purpose
 
-SW Inspector is a diagnostic panel with explicit confirmed worker update/unregister, direct selected entry deletion and confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
+SW Inspector is a diagnostic panel with explicit confirmed worker update/unregister and JSON messaging, opt-in document message listening, direct selected entry deletion and confirmed deletion of selected or listed Cache Storage namespaces. It answers what is registered, what controls this page, what is cached, and what can be established from the browser's exposed data.
 
 ## Operating Context
 
@@ -30,12 +30,13 @@ The panel lives beside Safari's Storage and Network tools and must remain useful
 - Explicit **Delete entry** immediately deletes the selected entry using its retained Cache and Request, without a confirmation dialog. It still prepares a fresh document-bound ticket before committing once. Expired or evicted inventories require Refresh; known outcomes reread only that cache without selecting another entry.
 - Explicit **Check for update** and **Unregister** use document-bound confirmation and retained registration references. Update may download/install a worker; completion does not guarantee activation. Unregister may leave existing pages controlled and does not delete Cache Storage. Unknown outcomes are never retried automatically.
 - **Manifest** discovers the first declared link without network access. **Load manifest** performs one explicit CORS request, limited to 256 KiB and 8 seconds; fields are declared values or Inspector reconstructions, not Safari’s processed manifest. **Show source** reuses loaded text. Icons are metadata only; there are no image requests, installability checks or installation.
+- **Messages** sends explicit confirmed JSON to one retained active/waiting worker, at most 16 KiB UTF-8. Posting confirms submission only and may change website state. Optional cooperative replies use an owned port with a five-second timeout; ordinary page messages remain uncorrelated. **Start listening** is opt-in for this document only. Session/log data is bounded, temporary, text-only and excluded from export; hide, Refresh, navigation and permission failure stop polling/listeners without automatic resume.
 - No worker start/stop/restart/skipWaiting, cache entry editing, network interception, offline toggles, or claim that cache presence proves offline operation.
 - The execution route and permission boundary are recorded in [ADR 0002](docs/adr/0002-devtools-page-bridge.md). Safari 27.0 navigation under temporary access remains a known limitation.
 
 ## Evidence on Hand
 
-Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker update/unregister controls are implemented with native acceptance pending. Manifest discovery/loading is implemented with native acceptance pending. Messaging remains planned.
+Future capabilities are scoped in the [development plans](docs/plans/README.md). Single namespace, fixed-list batch and selected entry deletion are implemented; native Safari acceptance remains tracked separately. Worker update/unregister controls are implemented with native acceptance pending. Manifest discovery/loading is implemented with native acceptance pending. Messages send/reply/listen controls are implemented with native acceptance pending.
 
 - [Native Safari results and pending acceptance](docs/TESTING.md), versioned separately from automated checks.
 - [Approved visual baseline](.impeccable/review/cache.png), using synthetic data, with tokens and rules in [DESIGN.md](DESIGN.md).

@@ -461,3 +461,31 @@ it('authenticates activation queries and returns only the epoch without native e
   expect(nativeEval).not.toHaveBeenCalled();
   dispose();
 });
+
+it('authenticates hidden events without consuming return epoch and rejects delayed old hides', async () => {
+  const endpoint = messageBus(); const devtools = endpoint('devtools.html'); const panel = endpoint('panel.html?session=one'); const other = endpoint('panel.html?session=two');
+  const relay = createPanelRelay(panel.runtime, panel.url); const hidden = vi.fn(); const returned = vi.fn();
+  const unsubscribe = relay.subscribePanelHidden(hidden); const unsubscribeReturn = relay.subscribePanelReturn(returned);
+  const [listener] = panel.messages.listeners;
+  for (const sender of [{ id: 'wrong', url: devtools.url }, { id: 'extension-id', url: panel.url }, { id: 'extension-id', url: 'https://extension-id/devtools.html' }]) listener({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 1 }, sender, () => {});
+  await other.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 1 });
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'two', epoch: 1 });
+  for (const epoch of [-1, 0, 1.5, NaN, '1']) await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch });
+  expect(hidden).not.toHaveBeenCalled();
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 1 });
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 1 }); expect(hidden).toHaveBeenCalledOnce();
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session: 'one', epoch: 1 }); expect(returned).toHaveBeenCalledOnce();
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-returned', session: 'one', epoch: 2 });
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 2 }); expect(hidden).toHaveBeenCalledOnce();
+  await devtools.runtime.sendMessage({ kind: 'sw-inspector/panel-hidden', session: 'one', epoch: 3 }); expect(hidden).toHaveBeenCalledTimes(2);
+  unsubscribe(); unsubscribeReturn(); expect(panel.messages.listeners.size).toBe(0);
+});
+it('emits native hidden signal and removes its listener on disposal', async () => {
+  const endpoint = messageBus(); const devtools = endpoint('devtools.html'); const panel = endpoint('panel.html?session=one');
+  const onShown = event<() => void>(); const onHidden = event<() => void>(); const hidden = vi.fn();
+  const unsubscribe = createPanelRelay(panel.runtime, panel.url).subscribePanelHidden(hidden);
+  const dispose = installPanelVisibilityRelay(devtools.runtime, { onShown, onHidden }, 'one');
+  for (const listener of onHidden.listeners) listener(); await Promise.resolve(); expect(hidden).toHaveBeenCalledOnce();
+  for (const listener of onHidden.listeners) listener(); dispose(); await Promise.resolve(); expect(hidden).toHaveBeenCalledOnce();
+  unsubscribe(); expect(onHidden.listeners.size).toBe(0);
+});

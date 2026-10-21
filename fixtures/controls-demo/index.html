@@ -10,6 +10,9 @@
 <p>Run <code>python3 fixtures/controls-demo/server.py</code> for these controls. <a href="/sw-inspector-worker/">Open worker test page</a> to use the isolated worker scope. No registration, update, activation or reload runs automatically.</p>
 <p><button id="worker-v1">Serve worker v1</button> <button id="worker-v2">Serve worker v2</button> <button id="worker-register">Register fixture worker</button> <button id="worker-inspect">Inspect fixture worker</button> <button id="worker-remove">Remove fixture worker</button></p>
 <p>Serve v1, register, then reload this scoped page manually to obtain a controller. Serve v2 changes only the bytes served at the same script URL; use the Inspector’s Check for update to request an update. A new worker may wait while this page stays controlled. Removing the registration leaves Cache Storage unchanged.</p>
+<h3>Cooperative Messages fixture</h3>
+<p>After explicit registration, use Inspector Messages and type one of these JSON values yourself. Check <strong>Request reply on supplied port</strong> for echo/delayed/no-reply. Start listening explicitly for page-directed messages. Nothing sends on page load.</p>
+<ul><li><code>{"fixture":"echo","value":"hello"}</code> replies on the supplied port.</li><li><code>{"fixture":"delayed-reply","value":"hello"}</code> replies after one second.</li><li><code>{"fixture":"no-reply"}</code> does not reply; Inspector reports its five-second timeout without assuming delivery failure.</li><li><code>{"fixture":"page-directed","value":"hello"}</code> sends one ordinary message to this source page; it is not correlated with a request.</li></ul>
 <pre id="worker-result" role="status">Worker fixture not inspected.</pre>
 <script type="module">
 const workerScope = new URL('/sw-inspector-worker/', location.origin).href;

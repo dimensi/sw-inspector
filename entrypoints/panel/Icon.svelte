@@ -6,6 +6,7 @@
     export: 'M8 10V2m-3 3 3-3 3 3M3 9v4h10V9',
     worker: 'M5 2v2m6-2v2M5 12v2m6-2v2M2 5h2m8 0h2M2 11h2m8 0h2M4 4h8v8H4zM6.5 6.5h3v3h-3z',
     database: 'M13 4c0 1.1-2.2 2-5 2S3 5.1 3 4s2.2-2 5-2 5 .9 5 2ZM3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2',
+    message: 'M2 3h12v8H6l-3 3v-3H2zM5 6h6M5 8h4',
     file: 'M4 1.5h5l3 3v10H4zM9 1.5v3h3M6 8h4M6 10.5h4',
     search: 'M10.5 10.5 14 14M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z',
     chevron: 'm5.5 3 5 5-5 5',

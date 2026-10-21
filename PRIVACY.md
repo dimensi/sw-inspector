@@ -22,9 +22,11 @@ You can explicitly confirm an update check or unregister one selected Service Wo
 
 You can explicitly load the document’s declared Web App Manifest. This makes one browser request to its resolved URL, which may be on another origin and may include ordinary browser credentials/referrer information according to the link’s policy. The response is bounded to 256 KiB and 8 seconds, held in memory and shown locally. Manifest icons and screenshots are not downloaded, and manifest source is excluded from exported reports. Discovery and showing already loaded source do not make requests.
 
+You can explicitly confirm sending a JSON value to the selected website worker. This sends the payload to website code, which may wake the worker, change website state or perform its own network/storage operations. SW Inspector does not send it to the developer. Posting confirms submission, not delivery. An optional supplied-port reply and explicit document message listening remain local, temporary and bounded; the five-second reply timeout does not prove failed delivery. A ten-second session lease bounds page-side cleanup if the panel disappears. Hide, Refresh, navigation and permission failure stop polling and best-effort remove only Inspector-owned listeners/ports; returning does not resume listening. Drafts and message content are not persisted or included in exported reports.
+
 ## Reports and sharing
 
-Exporting creates a local JSON file containing diagnostic metadata, including the inspected origin, URLs, cache and Service Worker information, storage estimates, measurements, a timestamp, and the browser's user agent. Reports exclude cached response bodies, previews, and response headers.
+Exporting creates a local JSON file containing diagnostic metadata, including the inspected origin, URLs, cache and Service Worker information, storage estimates, measurements, a timestamp, and the browser's user agent. Reports exclude cached response bodies, previews, response headers, manifest source, message payloads/logs and ephemeral session/worker handles.
 
 SW Inspector does not upload reports automatically. URLs and other metadata may contain sensitive information; review a report before sharing it with anyone.
 

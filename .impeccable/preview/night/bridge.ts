@@ -124,6 +124,8 @@ export const evaluateInspectedWindow = async source => {
   if (window.nightholdPrepare && source.includes('"type":"prepare-action"')) await new Promise<void>(resolve => { window.nightreleasePrepare = resolve; });
   if (window.nightinventoryError && source.includes('"type":"list-cache-keys"')) return [null, { isException: true, value: 'Fixture inventory read rejected' }];
   if (window.nightholdContext && source.includes('"type":"page-context"')) await new Promise<void>(resolve => { window.nightreleaseContext = resolve; });
+  if(window.nightopenError&&source.includes('"type":"open-message-session"'))return[null,{isException:true,value:'Fixture session open failed'}];
+  if(window.nightmessageError&&source.includes('"type":"read-message-events"'))return[null,{isException:true,value:'Fixture permission read denied'}];
   if (window.nightoverviewError && source.includes('"type":"overview"')) return [null, { isException: true, value: 'Fixture overview read rejected' }];
   if(window.nightExternalEnabled===true&&window.nightExternalEval)return window.nightExternalEval(source);
   try {
@@ -137,3 +139,5 @@ export const subscribePanelReturn = cb => { window.nightreturn = cb; return () =
 export const initializePanelActivation = async () => {};
 export const requestPanelActivation = async () => {};
 export const cancelPanelActivation = () => {};
+
+export const subscribePanelHidden=cb=>{window.nighthidden=cb;return()=>{if(window.nighthidden===cb)delete window.nighthidden;};};

@@ -4,7 +4,7 @@ export default defineConfig({
   modules: ['@wxt-dev/module-svelte'],
   manifest: ({ browser }) => ({
     name: 'SW Inspector',
-    description: 'Inspect workers, caches and Web App Manifests; explicitly load manifests, manage workers and delete cache data.',
+    description: 'Inspect workers, caches and Web App Manifests; explicitly load manifests, manage workers, send JSON and delete cache data.',
     version: '0.1.1',
     permissions: ['devtools', 'activeTab'],
     icons: {

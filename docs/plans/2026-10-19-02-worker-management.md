@@ -1,5 +1,7 @@
 # Worker Management Implementation Plan
 
+> Архив завершённой реализации: этот файл сохраняет контракт и историю задач, а не активные инструкции на повторное выполнение. Native Safari acceptance остаётся открытой; следующий шаг — [утренний список](../MORNING-CHECKLIST.md), фактические результаты — [TESTING](../TESTING.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Статус:** W1–W6 code-complete (2026-10-21); native Safari acceptance pending. Worker update/unregister доступны через явное подтверждение; native Safari acceptance pending. Этот файл не является разрешением выполнять операции над произвольным сайтом.

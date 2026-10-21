@@ -1,5 +1,7 @@
 # Web App Manifest Inspector Implementation Plan
 
+> Архив завершённой реализации: этот файл сохраняет контракт и историю задач, а не активные инструкции на повторное выполнение. Native Safari acceptance остаётся открытой; следующий шаг — [утренний список](../MORNING-CHECKLIST.md), фактические результаты — [TESTING](../TESTING.md).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Status:** M1–M6 code-complete (2026-10-21); native Safari acceptance pending. Manifest UI доступен; scoped Load manifest exception активирован вместе с M5, native Safari acceptance pending. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.

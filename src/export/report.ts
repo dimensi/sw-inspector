@@ -1,4 +1,4 @@
-import type { CacheDetails, CacheInventory, CacheMeasurement, OfflineCheck, Overview } from '../domain/types';
+import type { CacheDetails, CacheInventory, CacheMeasurement, OfflineCheck, Overview, WorkerState } from '../domain/types';
 
 type ReportInput = {
   timestamp: string;
@@ -12,6 +12,7 @@ type ReportInput = {
 
 export function buildReport(input: ReportInput): string {
   const inventories = input.inventories.map(({ snapshotId: _snapshotId, ...inventory }) => inventory);
+  const worker = (value: WorkerState | null) => value ? { scriptURL: value.scriptURL, state: value.state } : null;
   const report = {
     schemaVersion: 1,
     timestamp: input.timestamp,
@@ -19,8 +20,8 @@ export function buildReport(input: ReportInput): string {
     origin: input.overview.origin,
     overview: {
       origin: input.overview.origin,
-      registrations: input.overview.registrations,
-      controller: input.overview.controller,
+      registrations: input.overview.registrations.map(row => ({ scope: row.scope, installing: worker(row.installing), waiting: worker(row.waiting), active: worker(row.active) })),
+      controller: worker(input.overview.controller),
       caches: input.overview.caches,
       storage: input.overview.storage,
       warnings: input.overview.warnings,

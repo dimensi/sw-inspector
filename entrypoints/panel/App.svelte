@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
+  import MessagesPane from './MessagesPane.svelte';
   import ManifestPane from './ManifestPane.svelte';
   import WorkerActions from './WorkerActions.svelte';
   import type { ActionIntent, ActionReceipt } from '../../src/domain/actions';
@@ -8,7 +9,7 @@
   import { createActionController, type ActionState } from '../../src/ui/action-controller';
   import type { PageIdentity } from '../../src/domain/types';
   import { browser } from 'wxt/browser';
-  import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn, initializePanelActivation, requestPanelActivation, cancelPanelActivation } from '../../src/bridge/eval-window';
+  import { evaluateInspectedWindow, subscribeInspectedNavigation, subscribePanelReturn, subscribePanelHidden, initializePanelActivation, requestPanelActivation, cancelPanelActivation } from '../../src/bridge/eval-window';
   import { describeDevToolsBinding, type DevToolsNamespace } from '../../src/bridge/runtime-binding';
   import { createTransport } from '../../src/bridge/transport';
   import { formatBytes, formatStoragePercentage } from '../../src/domain/format';
@@ -23,9 +24,13 @@
       return exception || typeof value !== 'string' ? 'unknown-origin' : value;
     },
   });
-  type View = 'workers' | 'caches' | 'cache' | 'offline' | 'manifest' | 'diagnostics';
+  type View = 'workers' | 'caches' | 'cache' | 'offline' | 'manifest' | 'messages' | 'diagnostics';
   let view = $state<View>('workers');
   let manifestRefreshToken = $state(0);
+  let messageRefreshToken = $state(0);
+  let messageSettlementToken = $state(0);
+  let messagesHidden = $state(false);
+  let messageOperation = $state(false);
   let cachesOpen = $state(true);
   let requestedCache = $state('');
   let lastUpdated = $state<string | null>(null);
@@ -91,8 +96,13 @@
   const actions = createActionController({
     invoke: command => transport.invoke(command),
     getPage: () => overview?.page ?? null,
-    onState: state => { actionState = state; },
+    onState: state => {
+      const failedPrepare = messageOperation && actionState.phase === 'preparing' && state.phase === 'result' && !!state.error;
+      actionState = state;
+      if (failedPrepare) messageRefreshToken += 1;
+    },
     onSettled: async (receipt) => {
+      if (messageOperation) { messageSettlementToken += 1; return; }
       if (workerOperation) { await reloadOverviewAfterWorkerAction(receipt); return; }
       if (!receipt) return;
       const expectedPage = overview?.page;
@@ -206,7 +216,14 @@
     actionTrigger = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
     void actions.prepare(intent);
   }
+  function prepareMessageAction(intent: ActionIntent) {
+    if (!overview || loading || workerHandlesStale) return;
+    messageOperation = true; workerOperation = false;
+    actionTrigger = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    void actions.prepare(intent);
+  }
   function resetActions() {
+    messageOperation = false;
     actionContextGeneration += 1;
     entryActionCache = null;
     workerActionPage = null;
@@ -268,6 +285,8 @@
 
   async function refresh(expectedPage?: PageIdentity) {
     manifestRefreshToken += 1;
+    messageRefreshToken += 1;
+    messagesHidden = false;
     if (!expectedPage) resetActions();
     navigationGeneration += 1;
     transport.invalidate();
@@ -420,6 +439,7 @@
     };
     const unsubscribeNavigation = subscribeInspectedNavigation(onNavigated);
     const unsubscribeReturn = subscribePanelReturn(() => { void refresh(); });
+    const unsubscribeHidden = subscribePanelHidden(() => { messagesHidden = true; messageRefreshToken += 1; if (messageOperation) resetActions(); });
     void refresh();
     return () => {
       resetActions();
@@ -429,6 +449,7 @@
       window.removeEventListener('blur', onBlur);
       unsubscribeNavigation();
       unsubscribeReturn();
+      unsubscribeHidden();
       navigationGeneration += 1;
       transport.invalidate();
       measurementController?.abort();
@@ -437,7 +458,7 @@
 </script>
 
 {#snippet actionResult()}
-  {#if actionState.phase === 'result' && !workerOperation}
+  {#if actionState.phase === 'result' && !workerOperation && !messageOperation}
     <section class="action-result" class:warning={!actionState.receipt || !!receiptCounts.skipped || (!!receiptCounts.failed && !!receiptCounts.deleted)} class:error={!!receiptCounts.failed && !receiptCounts.deleted} aria-label="Cache Storage action result">
       <p class="action-summary" aria-live="polite">{actionState.receipt ? receiptSummary : actionState.error}</p>
       {#if actionState.receipt}
@@ -474,7 +495,7 @@
   <div class="compact-navigation">
     <label for="section-select">View</label>
     <select id="section-select" value={view === 'cache' ? 'caches' : view} onchange={(event) => { chooseView(event.currentTarget.value as View); }}>
-      <option value="workers">Service Workers</option><option value="caches">Cache Storage</option><option value="offline">Offline Resources</option><option value="manifest">Manifest</option><option value="diagnostics">Diagnostics</option>
+      <option value="workers">Service Workers</option><option value="caches">Cache Storage</option><option value="offline">Offline Resources</option><option value="manifest">Manifest</option><option value="messages">Messages</option><option value="diagnostics">Diagnostics</option>
     </select>
     {#if view === 'cache' || view === 'caches'}
       <select aria-label="Cache namespace" value={view === 'cache' ? requestedCache : ''} onchange={(event) => { const name = event.currentTarget.value; if (name) void chooseCache(name); else chooseView('caches'); }}>
@@ -498,6 +519,7 @@
         {/if}
         <button class="navigation-row" class:current={view === 'offline'} aria-current={view === 'offline' ? 'page' : undefined} onclick={() => { chooseView('offline'); }}><Icon name="check" /><span>Offline Resources</span></button>
         <button class="navigation-row" class:current={view === 'manifest'} aria-current={view === 'manifest' ? 'page' : undefined} onclick={() => { chooseView('manifest'); }}><Icon name="file" /><span>Manifest</span></button>
+        <button class="navigation-row" class:current={view === 'messages'} aria-current={view === 'messages' ? 'page' : undefined} onclick={() => { chooseView('messages'); }}><Icon name="message" /><span>Messages</span></button>
       </div>
       <button class="navigation-row diagnostic-navigation" class:current={view === 'diagnostics'} aria-current={view === 'diagnostics' ? 'page' : undefined} onclick={() => { chooseView('diagnostics'); }}><Icon name="diagnostics" /><span>Diagnostics</span></button>
     </nav>
@@ -507,7 +529,7 @@
         <div class="notice error" role="alert"><Icon name="warning" /><div><strong>{inspectionFailure?.title}</strong><p>{inspectionFailure?.message}</p>{#if inspectionFailure?.technicalDetails}<details><summary>Technical details</summary><p>{inspectionFailure.technicalDetails}</p></details>{/if}</div></div>
       {/if}
 
-      {#if view !== 'cache' && view !== 'caches' && view !== 'workers'}{@render actionResult()}{/if}
+      {#if view !== 'cache' && view !== 'caches' && view !== 'workers' && view !== 'messages'}{@render actionResult()}{/if}
 
       {#if view === 'workers'}
         <div class="pane-toolbar worker-toolbar"><h1>Service Workers</h1><span class="secondary">{overview ? `${overview.registrations.length} registered` : 'Not inspected'}</span><span class="toolbar-space"></span>
@@ -562,6 +584,15 @@
           {/if}
         </div>
 
+      {:else if view === 'messages'}
+        {#if messageOperation && actionState.phase === 'result'}
+          <section class="action-result" class:warning={!actionState.receipt} class:error={actionState.receipt?.items.some(item => item.outcome === 'failed')} aria-label="Message action result">
+            <div class="action-summary" aria-live="polite">{#if actionState.receipt}{#each actionState.receipt.items as item, index (index)}<p>{item.message ?? item.outcome}</p>{/each}{:else}Message outcome is unknown or sending was rejected. {actionState.error}{/if}</div>
+            <button class="tool-button action-close" aria-label="Dismiss message result" onclick={dismissActionResult}><Icon name="close" size={12} /></button>
+          </section>
+        {/if}
+        {#if messagesHidden}<p class="inline-empty">Messages stopped while the panel is hidden. Return to the panel to start a new session.</p>
+        {:else}<MessagesPane page={overview?.page ?? null} registrations={overview?.registrations ?? []} onintent={prepareMessageAction} invoke={transport.invoke} busy={loading || workerHandlesStale || actionState.phase === 'preparing' || actionState.phase === 'confirming' || actionState.phase === 'running'} settlementToken={messageSettlementToken} refreshToken={messageRefreshToken} />{/if}
       {:else if view === 'manifest'}
         <ManifestPane page={overview?.page ?? null} refreshToken={manifestRefreshToken} invoke={transport.invoke} />
 
