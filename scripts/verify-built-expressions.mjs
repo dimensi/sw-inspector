@@ -177,4 +177,44 @@ const staleWorkerCommit = await run({ type: 'commit-action', expectedPage: page,
 assert.equal(staleWorkerCommit.ok, false);
 assert.equal(staleWorkerCommit.error.code, 'stale-target');
 assert.equal(updateCalls, 1);
-console.log(`PASS ${filename}: compiled start/poll, context/overview, C1/C2/C3 retained cache contracts, W4 retained worker update/unregister, hostile scope/script data, stale worker rejection and duplicate commits execute once`);
+// M4 executes the serialized DOM discovery and bounded fetch factory from this artifact.
+realm.URL = URL;
+realm.AbortController = AbortController;
+const manifestElement = { rawHref: './manifest.webmanifest',
+  getAttribute(name) { return name === 'href' ? this.rawHref : null; },
+  get href() { return new URL(this.rawHref, 'https://fixture.test/').href; },
+  crossOrigin: 'use-credentials', referrerPolicy: 'no-referrer' };
+realm.document = { querySelectorAll(selector) { assert.equal(selector, 'link[rel~="manifest" i]'); return [manifestElement]; } };
+let manifestRequests = 0;
+const manifestText = JSON.stringify({name:'Hostile </script>\u2028\u2029',start_url:'../launch',icons:[{src:'./icon.png'}]});
+realm.fetch = async (url, options) => {
+  manifestRequests++;
+  assert.equal(url, 'https://fixture.test/manifest.webmanifest');
+  assert.equal(options.mode, 'cors');
+  assert.equal(options.credentials, 'include');
+  assert.equal(options.redirect, 'follow');
+  assert.equal(options.cache, 'default');
+  assert.equal(options.referrerPolicy, 'no-referrer');
+  const response = new Response(manifestText, {headers:{'content-type':'application/manifest+json'}});
+  Object.defineProperty(response, 'url', {value:'https://fixture.test/redirected/final.webmanifest'});
+  Object.defineProperty(response, 'redirected', {value:true});
+  return response;
+};
+const discoveredManifest = await run({type:'manifest:discover',expectedPage:page});
+assert.equal(discoveredManifest.ok, true);
+assert.equal(discoveredManifest.value.linkCount, 1);
+assert.equal(discoveredManifest.value.link.href, './manifest.webmanifest');
+assert.equal(manifestRequests, 0, 'DOM discovery never fetches');
+const loadedManifest = await run({type:'manifest:fetch',expectedPage:page,snapshotId:discoveredManifest.value.snapshotId});
+assert.equal(loadedManifest.ok, true);
+assert.equal(loadedManifest.value.state, 'loaded');
+assert.equal(loadedManifest.value.text, manifestText);
+assert.equal(loadedManifest.value.finalURL, 'https://fixture.test/redirected/final.webmanifest');
+assert.equal(loadedManifest.value.readBytes, new TextEncoder().encode(manifestText).byteLength);
+assert.equal(manifestRequests, 1);
+manifestElement.rawHref = '/replacement.webmanifest';
+const staleManifest = await run({type:'manifest:fetch',expectedPage:page,snapshotId:discoveredManifest.value.snapshotId});
+assert.equal(staleManifest.ok, false);
+assert.equal(staleManifest.error.code, 'stale-result');
+assert.equal(manifestRequests, 1, 'Changed retained DOM link rejects before a new request');
+console.log(`PASS ${filename}: compiled start/poll, C1/C2/C3 retained cache contracts, W4 retained worker update/unregister and once-only commits, M4 DOM discovery/no-fetch, bounded manifest fetch/final URL/text and stale-link zero-request rejection`);

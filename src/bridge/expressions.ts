@@ -1,3 +1,4 @@
+import { createManifestRunner } from '../manifest/page-runner';
 import type { InspectorCommand } from '../domain/commands';
 import { createWorkerActions } from '../workers/page-actions';
 import { createCacheActions } from '../cache/page-actions';
@@ -32,6 +33,9 @@ export function createJobStartExpression(command: InspectorCommand, jobId: strin
         ...(${createCacheActions.toString()})(context, ${serialize(snapshotRegistryKey)}),
         ...(${createWorkerActions.toString()})(context),
       };
+      if (command.type === 'manifest:discover' || command.type === 'manifest:fetch') {
+        return (${createManifestRunner.toString()})(context)(command);
+      }
       return command.type === 'prepare-action' || command.type === 'commit-action'
         ? (${createControlRunner.toString()})(context, handlers)(command)
         : (${createPageRunner.toString()})(${serialize(snapshotRegistryKey)}, context)(command);

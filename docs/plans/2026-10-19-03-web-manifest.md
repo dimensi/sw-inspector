@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** M1–M3 code-complete (2026-10-21); M4–M6 planned. DOM runner пока не подключён; manifest fetch/UI недоступны. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
+**Status:** M1–M4 code-complete (2026-10-21); M5–M6 planned. Runner сериализован через relay; пользовательский Manifest UI пока недоступен. Создание этого файла не разрешает реализацию, сетевые запросы или изменение действующих ADR.
 
 **Goal:** Добавить инспекцию объявленного Web App Manifest: обнаружение ссылки, явную ограниченную загрузку, поля, разрешённые URL, исходный JSON и локальные замечания.
 
@@ -135,12 +135,12 @@ type ManifestParseInput = { documentURL: string; manifestURL: string; contentTyp
 **Files:** изменить `src/bridge/expressions.ts`, `src/domain/commands.ts`; создать `tests/manifest/expressions.test.ts`; сохранить foundation routing.
 **Interfaces:** `InspectorCommand` включает `ManifestCommand`; transport.invoke принимает `InspectorCommand`, возвращаемые `Result<T>` не меняются.
 
-- [ ] Добавить failing round-trip test: сгенерированный start-expression возвращает синхронный JSON jobId, poll даёт ManifestDiscovery/ManifestFetch; тест выполняет expression без module scope.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/manifest/expressions.test.ts` → FAIL до подключения factory.
-- [ ] В expression явно сериализовать `createManifestRunner.toString()` и передать foundation PageContext. Все исполняемые helpers runner вложены в factory; type-only imports допустимы. Не рассчитывать на импортированный runtime closure.
-- [ ] Routing различает manifest commands явно; неизвестная команда не проваливается в legacy `checkUrls(command.paths)`. Не переписывать relay/permissions и не добавлять direct-panel eval.
-- [ ] Проверить hostile строковые данные, TTL context disposal, stale-before/after response и отсутствие second fetch при повторном poll завершённого job.
-- [ ] Запустить `rtk proxy pnpm exec vitest run tests/manifest/expressions.test.ts tests/bridge/expressions.test.ts tests/bridge/transport.test.ts tests/bridge/devtools-relay.test.ts` → PASS.
+- [x] Добавить failing round-trip test: сгенерированный start-expression возвращает синхронный JSON jobId, poll даёт ManifestDiscovery/ManifestFetch; тест выполняет expression без module scope.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/manifest/expressions.test.ts` → FAIL до подключения factory.
+- [x] В expression явно сериализовать `createManifestRunner.toString()` и передать foundation PageContext. Все исполняемые helpers runner вложены в factory; type-only imports допустимы. Не рассчитывать на импортированный runtime closure.
+- [x] Routing различает manifest commands явно; неизвестная команда не проваливается в legacy `checkUrls(command.paths)`. Не переписывать relay/permissions и не добавлять direct-panel eval.
+- [x] Проверить hostile строковые данные, TTL context disposal, stale-before/after response и отсутствие second fetch при повторном poll завершённого job.
+- [x] Запустить `rtk proxy pnpm exec vitest run tests/manifest/expressions.test.ts tests/bridge/expressions.test.ts tests/bridge/transport.test.ts tests/bridge/devtools-relay.test.ts` → PASS.
 
 ### M5: ManifestPane и синтетические UI-сценарии
 
