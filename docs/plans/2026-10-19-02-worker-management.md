@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Статус:** W1–W5 code-complete (2026-10-21); W6 acceptance pending. Worker update/unregister доступны через явное подтверждение; native Safari acceptance pending. Этот файл не является разрешением выполнять операции над произвольным сайтом.
+**Статус:** W1–W6 code-complete (2026-10-21); native Safari acceptance pending. Worker update/unregister доступны через явное подтверждение; native Safari acceptance pending. Этот файл не является разрешением выполнять операции над произвольным сайтом.
 
 **Goal:** добавить явную проверку обновления и удаление выбранной регистрации Service Worker с проверкой цели и честным результатом операции.
 
@@ -156,20 +156,22 @@
 
 **Files:** evidence в `docs/TESTING.md`; при первом выпущенном action также `docs/adr/0004-explicit-development-actions.md`, `PRODUCT.md`, `AGENTS.md`, `README.md`, `package.json`, `wxt.config.ts`, `DESIGN.md`, `entrypoints/panel/App.svelte` и реальные файлы copy под `marketing/app-store/`. Implementation commands ниже выполнять после предыдущих задач.
 
-- [ ] Если workers — первая shipped action-функция, принять ADR 0004 и синхронно обновить перечисленные policy/copy владельцы: пассивная диагностика по умолчанию, явные update/unregister, без ложного `Read only`. Через `rtk rg -n -i 'read.only|readonly|only inspects|no.*mutat' PRODUCT.md AGENTS.md README.md DESIGN.md package.json wxt.config.ts entrypoints marketing/app-store` найти actual copy; запреты cache deletion, messaging и иных ещё не выпущенных функций сохранить. Если другой план уже активировал policy, добавить только worker scope без повторного принятия ADR.
-- [ ] Проверить локальные ссылки и соответствие product/manifest/store copy реально включённым controls; tokens DESIGN не менять ради новых кнопок. Новую native acceptance не выводить из принятия ADR.
+- [x] Если workers — первая shipped action-функция, принять ADR 0004 и синхронно обновить перечисленные policy/copy владельцы: пассивная диагностика по умолчанию, явные update/unregister, без ложного `Read only`. Через `rtk rg -n -i 'read.only|readonly|only inspects|no.*mutat' PRODUCT.md AGENTS.md README.md DESIGN.md package.json wxt.config.ts entrypoints marketing/app-store` найти actual copy; запреты cache deletion, messaging и иных ещё не выпущенных функций сохранить. Если другой план уже активировал policy, добавить только worker scope без повторного принятия ADR.
+- [x] Проверить локальные ссылки и соответствие product/manifest/store copy реально включённым controls; tokens DESIGN не менять ради новых кнопок. Новую native acceptance не выводить из принятия ADR.
 
-- [ ] Запустить `rtk pnpm test`; ожидается PASS всего набора, не переносить историческое число тестов.
-- [ ] Запустить `rtk pnpm check`, затем `rtk pnpm build:safari`, затем `rtk pnpm check:manifest`; каждую команду отдельно, ожидается exit 0.
-- [ ] Прочитать `rtk cat .output/safari-mv3/manifest.json`: MV3/devtools_page/devtools/activeTab; нет новых host permissions/background/content_scripts.
-- [ ] Запустить `rtk python3 .impeccable/preview/server.py`, открыть `http://127.0.0.1:4186/preview.html?session=preview`; проверить один автоматический initial overview, authenticated panel-return refresh без автоматического чтения bodies и сценарии W5 (прежняя no-initial-eval предпосылка superseded by ADR 0002); остановить сервер после проверки.
-- [ ] Для native использовать только управляемый тестовый origin с worker v1/v2 и известным кэшем; чужой сайт из исторического TESTING не является разрешением unregister.
+- [x] Запустить `rtk pnpm test`; ожидается PASS всего набора, не переносить историческое число тестов.
+- [x] Запустить `rtk pnpm check`, затем `rtk pnpm build:safari`, затем `rtk pnpm check:manifest`; каждую команду отдельно, ожидается exit 0.
+- [x] Прочитать `rtk cat .output/safari-mv3/manifest.json`: MV3/devtools_page/devtools/activeTab; нет новых host permissions/background/content_scripts.
+- [x] Проверить synthetic UI через сохранённый real-App harness `.impeccable/preview/night/` и один QA browser вместо исторического preview server: initial overview остаётся разрешён, body reads только явные; выполнить bounded W5 matrix. Прежняя no-initial-eval предпосылка superseded by ADR 0002. QA browser сохраняется для следующих roadmap задач; evidence не является native Safari acceptance.
+- [x] Для native использовать только управляемый тестовый origin с worker v1/v2 и известным кэшем; чужой сайт из исторического TESTING не является разрешением unregister.
 - [ ] Зафиксировать Safari/macOS build, revision/bundle, installation route, origin, access gesture и evidence. Для Xcode wrapper сначала `rtk pnpm sync:safari`; temporary bundle тестировать отдельно.
 - [ ] Update одинакового worker: check completed, activation не обещана. Update v2: новый installing/waiting виден после Refresh, controller может оставаться v1.
 - [ ] Unregister при открытой контролируемой странице: receipt соответствует boolean; после Refresh registrations/controller показаны независимо; известный Cache Storage остаётся.
 - [ ] Reload того же origin во время confirmation при temporary activeTab: commit старого ticket отвергается до API даже без native navigation event; сохранить **Refresh after navigation**.
 - [ ] Повторить denied access, worker replacement во время confirmation, два Inspector окна и потерю ответа после commit; ни одного blind retry или операции в другом Inspector/page.
 - [ ] В TESTING записать passed только для реально выполненных native случаев; оставшиеся отметить pending. Сохранить строки API result, refreshed snapshot и unknown outcome отдельно.
+
+**W6 handoff:** isolated native fixture `/sw-inspector-worker/` и stable-URL v1/v2 source server готовы на существующем localhost:4174; worker registration/removal и version changes только явные. Existing cache fixture/delay сохранены. Chrome real-API проверка и signed packaging evidence записаны в TESTING отдельно от native Safari. Signed wrapper повторно собран только по прежнему `/tmp/sw-inspector-a1-signed` пути, output/repository/embedded Resources совпали, strict deep codesign прошёл. Нативные Safari пункты выше остаются unchecked; **Refresh after navigation** сохраняется.
 
 ## Источники и границы доказательств
 
