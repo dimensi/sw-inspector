@@ -4,7 +4,7 @@
 
 ## Открытие и обновление
 
-1. Открой [SW Inspector.app](</tmp/sw-inspector-a1-signed/Build/Products/Debug/SW Inspector.app>). **Перезапусти Safari и открой новый Web Inspector** для [worker test page](http://localhost:4174/sw-inspector-worker/) → **SW Inspector**. Нажми значок расширения на этой вкладке. Если появилась **Allow access to this tab**, после разрешения нажми **Refresh**. При открытии панели данные должны читаться автоматически; **Refresh** также обновляет их вручную.
+1. Открой [SW Inspector.app](</Users/n.nafranets/Applications/SW Inspector.app>). **Перезапусти Safari и открой новый Web Inspector** для [worker test page](http://localhost:4174/sw-inspector-worker/) → **SW Inspector**. Нажми значок расширения на этой вкладке. Если появилась **Allow access to this tab**, после разрешения нажми **Refresh**. При открытии панели данные должны читаться автоматически; **Refresh** также обновляет их вручную.
 2. На странице нажми **Seed fixture** → **Refresh** в панели. Перейди на **Network** в Web Inspector, на странице нажми **Cleanup fixture**, затем вернись в **SW Inspector**: тестовые кеши должны исчезнуть без ручного Refresh. Снова нажми **Seed fixture** и **Refresh**, чтобы восстановить данные.
 3. После перехода или перезагрузки страницы нажимай **Refresh**. Если доступ потерян, нажми значок расширения на этой вкладке и повтори **Refresh**.
 
